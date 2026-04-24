@@ -1,0 +1,54 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: tiny-admin-server
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/tiny_admin?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5s
+  quartz:
+    job-store-type: memory
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+tiny-admin:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+  security:
+    issuer: tiny-admin
+    access-token-ttl: PT30M
+    refresh-token-ttl: P7D
+    secret: 1234567890123456789012345678901234567890123456789012345678901234
+  file:
+    storage-path: ./uploads

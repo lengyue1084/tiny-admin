@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: tiny-admin-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: tiny_admin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7.4
+    container_name: tiny-admin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  server:
+    build:
+      context: ../tiny-admin-server
+    container_name: tiny-admin-server
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/tiny_admin?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: root
+      DB_PASSWORD: root123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "8080:8080"
+
+  web:
+    build:
+      context: ../tiny-admin-web
+    container_name: tiny-admin-web
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+
+volumes:
+  mysql-data:
+  redis-data:

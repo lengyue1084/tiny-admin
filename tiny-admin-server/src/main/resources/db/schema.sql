@@ -1,0 +1,204 @@
+DROP TABLE IF EXISTS sys_user_role;
+DROP TABLE IF EXISTS sys_role_menu;
+DROP TABLE IF EXISTS sys_online_user;
+DROP TABLE IF EXISTS sys_oper_log;
+DROP TABLE IF EXISTS sys_login_log;
+DROP TABLE IF EXISTS sys_notice;
+DROP TABLE IF EXISTS sys_config;
+DROP TABLE IF EXISTS sys_dict_data;
+DROP TABLE IF EXISTS sys_dict_type;
+DROP TABLE IF EXISTS sys_post;
+DROP TABLE IF EXISTS sys_dept;
+DROP TABLE IF EXISTS sys_menu;
+DROP TABLE IF EXISTS sys_role;
+DROP TABLE IF EXISTS sys_user;
+DROP TABLE IF EXISTS job_log;
+DROP TABLE IF EXISTS job_info;
+DROP TABLE IF EXISTS demo_project;
+
+CREATE TABLE sys_user (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    nick_name VARCHAR(64) NOT NULL,
+    email VARCHAR(128),
+    phone VARCHAR(32),
+    dept_id BIGINT,
+    post_id BIGINT,
+    status INT DEFAULT 1,
+    data_scope VARCHAR(32) DEFAULT 'ALL',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_role (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    code VARCHAR(64) NOT NULL UNIQUE,
+    data_scope VARCHAR(32) DEFAULT 'ALL',
+    status INT DEFAULT 1,
+    remark VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_menu (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    parent_id BIGINT DEFAULT 0,
+    name VARCHAR(64) NOT NULL,
+    path VARCHAR(128),
+    component VARCHAR(128),
+    icon VARCHAR(64),
+    type VARCHAR(16) NOT NULL,
+    permission_code VARCHAR(128),
+    order_num INT DEFAULT 0,
+    visible INT DEFAULT 1,
+    status INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_dept (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    parent_id BIGINT DEFAULT 0,
+    name VARCHAR(64) NOT NULL,
+    order_num INT DEFAULT 0,
+    leader VARCHAR(64),
+    phone VARCHAR(32),
+    email VARCHAR(128),
+    status INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_post (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    code VARCHAR(64) NOT NULL,
+    order_num INT DEFAULT 0,
+    status INT DEFAULT 1,
+    remark VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_dict_type (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    type_code VARCHAR(64) NOT NULL UNIQUE,
+    status INT DEFAULT 1,
+    remark VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_dict_data (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    type_id BIGINT NOT NULL,
+    label VARCHAR(64) NOT NULL,
+    dict_value VARCHAR(64) NOT NULL,
+    tag_type VARCHAR(32),
+    order_num INT DEFAULT 0,
+    status INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_config (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    config_key VARCHAR(128) NOT NULL UNIQUE,
+    config_value VARCHAR(512) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    builtin INT DEFAULT 0,
+    remark VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_notice (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(128) NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    content TEXT NOT NULL,
+    status INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_oper_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    module VARCHAR(64),
+    action VARCHAR(64),
+    method VARCHAR(255),
+    request_uri VARCHAR(255),
+    operator_name VARCHAR(64),
+    request_body TEXT,
+    success INT DEFAULT 1,
+    error_message VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_login_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(64),
+    ip VARCHAR(64),
+    status VARCHAR(32),
+    message VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_online_user (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    session_id VARCHAR(64) NOT NULL UNIQUE,
+    user_id BIGINT NOT NULL,
+    username VARCHAR(64) NOT NULL,
+    ip VARCHAR(64),
+    user_agent VARCHAR(255),
+    login_time TIMESTAMP,
+    last_active_time TIMESTAMP,
+    expires_at TIMESTAMP
+);
+
+CREATE TABLE sys_user_role (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL
+);
+
+CREATE TABLE sys_role_menu (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    role_id BIGINT NOT NULL,
+    menu_id BIGINT NOT NULL
+);
+
+CREATE TABLE job_info (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(128) NOT NULL,
+    job_group VARCHAR(64) NOT NULL,
+    cron_expression VARCHAR(64) NOT NULL,
+    target_bean VARCHAR(128) NOT NULL,
+    target_method VARCHAR(128) NOT NULL,
+    args VARCHAR(255),
+    status INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE job_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    job_id BIGINT NOT NULL,
+    job_name VARCHAR(128) NOT NULL,
+    success INT DEFAULT 1,
+    message VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE demo_project (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(128) NOT NULL,
+    owner VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

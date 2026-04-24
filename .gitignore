@@ -1,0 +1,31 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Java / Gradle
+.gradle/
+build/
+out/
+
+# Local runtime data
+uploads/
+tmp/
+temp/
+
+# Archives and local tool bundles
+*.zip
+tools/
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
