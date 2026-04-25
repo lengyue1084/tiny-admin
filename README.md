@@ -1,21 +1,35 @@
 # Tiny Admin
 
-Tiny Admin 是一套面向企业中后台场景的单体后台系统，采用“Spring Boot 单体后端 + React 管理端”的交付形态。
+Tiny Admin is a monolithic admin platform for enterprise back-office scenarios, delivered as a Spring Boot backend with a React admin web application.
 
-## 技术栈
+## Stack
 
-- 后端：Java 17、Spring Boot 3、Spring Security 6、MyBatis-Plus、Quartz、MySQL、Redis
-- 前端：React 18、Vite、Ant Design、Zustand、Axios
-- 部署：Docker Compose
+- Backend: Java 17, Spring Boot 3, Spring Security 6, MyBatis-Plus, Quartz, MySQL, Redis
+- Frontend: React 18, Vite, Ant Design, Zustand, Axios
+- Deployment: Docker Compose
 
-## 默认账号
+## Screenshots
 
-- 用户名：`admin`
-- 密码：`admin123`
+### Login
 
-## 本地开发
+![Login page](docs/images/login-page.png)
 
-### 前端
+### Dashboard
+
+![Dashboard](docs/images/dashboard.png)
+
+### System Management
+
+![System users page](docs/images/system-users.png)
+
+## Default Account
+
+- Username: `admin`
+- Password: `admin123`
+
+## Local Development
+
+### Frontend
 
 ```bash
 cd tiny-admin-web
@@ -23,31 +37,31 @@ npm install
 npm run dev
 ```
 
-前端默认代理到 `http://localhost:8080`。
+The frontend proxies API requests to `http://localhost:8080`.
 
-### 后端
+### Backend
 
 ```bash
 cd deploy
 docker compose up --build
 ```
 
-启动后访问：
+After startup:
 
-- 前端：[http://localhost](http://localhost)
-- 后端接口文档：[http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- Frontend: [http://localhost](http://localhost)
+- API docs: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
-## 首期功能
+## Initial Feature Scope
 
-- 登录认证、验证码、JWT + Redis 会话
-- 用户、角色、菜单、部门、岗位
-- 字典、参数、通知公告
-- 操作日志、登录日志、在线用户
-- 服务监控、缓存监控
-- 定时任务与执行日志
-- 文件上传
-- 示例业务模块
+- Login, captcha, JWT + Redis session management
+- Users, roles, menus, departments, posts
+- Dictionaries, configs, notices
+- Operation logs, login logs, online users
+- Server and cache monitoring
+- Scheduled jobs and execution logs
+- File upload
+- Demo business module
 
-## 文档
+## Docs
 
-- 初始任务说明：[docs/initial-requirements.md](/D:/JavaProject/tiny-admin/docs/initial-requirements.md)
+- Initial requirements: [docs/initial-requirements.md](docs/initial-requirements.md)
