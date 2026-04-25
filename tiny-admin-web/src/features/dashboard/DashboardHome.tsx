@@ -1,5 +1,5 @@
-import { Card, Col, List, Progress, Row, Space, Statistic, Tag, Typography } from 'antd'
 import { MonitorOutlined, RocketOutlined, SafetyCertificateOutlined, ScheduleOutlined } from '@ant-design/icons'
+import { Card, Col, List, Progress, Row, Space, Statistic, Tag, Typography } from 'antd'
 
 export function DashboardHome() {
   return (
@@ -13,7 +13,8 @@ export function DashboardHome() {
             单体后台的复杂度
           </Typography.Title>
           <Typography.Paragraph style={{ color: 'rgba(255,255,255,0.78)', fontSize: 16 }}>
-            这里保留 RuoYi 的系统管理能力，同时把导航、工作台和常见管理页面升级成更适合 React 中后台的体验。
+            这里聚合系统管理、导航、工作台和常见管理页面，
+            让权限、审计、监控与业务扩展在统一中后台体验下协同工作。
           </Typography.Paragraph>
           <Row gutter={[16, 16]} style={{ marginTop: 30 }}>
             <Col span={12}>
@@ -70,7 +71,7 @@ export function DashboardHome() {
               dataSource={[
                 '先完成系统管理中的基础配置，再用新角色验证动态菜单和按钮权限。',
                 '完成一次定时任务新增与手动执行，确保作业编排链路可用。',
-                '用示例业务模块复制一遍新增菜单、页面和权限点的接入过程。',
+                '用示例业务模块再走一遍新增菜单、页面和权限点的接入流程。',
               ]}
               renderItem={(item) => (
                 <List.Item>

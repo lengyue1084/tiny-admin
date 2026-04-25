@@ -2,8 +2,8 @@ import { LockOutlined, SafetyOutlined, UserOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { authApi } from '../../shared/api/services'
 import { useAuthStore } from '../../app/store/authStore'
+import { authApi } from '../../shared/api/services'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -36,11 +36,12 @@ export function LoginPage() {
             Tiny Admin
           </Typography.Title>
           <Typography.Paragraph style={{ color: 'rgba(255,255,255,0.78)', fontSize: 18 }}>
-            参考 RuoYi 能力模型重新打造的现代化 React 后台平台。保留权限、审计、监控和调度能力，同时把体验做得更轻、更清晰。
+            面向权限、审计、监控、调度和业务扩展场景打造的现代化 React 管理平台，
+            让单体后台在统一体验下保持清晰、稳定和可扩展。
           </Typography.Paragraph>
           <Space direction="vertical" size="middle" style={{ width: '100%', marginTop: 48 }}>
             <Card variant="borderless" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>
-              <Typography.Text style={{ color: '#fff' }}>系统管理、审计、监控、调度、示例业务</Typography.Text>
+              <Typography.Text style={{ color: '#fff' }}>系统管理、审计日志、运维监控、任务调度、示例业务</Typography.Text>
             </Card>
             <Card variant="borderless" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>
               <Typography.Text style={{ color: '#fff' }}>双栏增强型导航，适合大模块与细分页面并存</Typography.Text>

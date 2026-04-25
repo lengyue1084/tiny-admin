@@ -1,11 +1,11 @@
 # Tiny Admin
 
-基于 RuoYi 能力模型实现的现代化单体后台系统，采用“后端单体 + React 管理端”架构。
+Tiny Admin 是一套面向企业中后台场景的单体后台系统，采用“Spring Boot 单体后端 + React 管理端”的交付形态。
 
 ## 技术栈
 
 - 后端：Java 17、Spring Boot 3、Spring Security 6、MyBatis-Plus、Quartz、MySQL、Redis
-- 前端：React、Vite、Ant Design、Zustand、Axios
+- 前端：React 18、Vite、Ant Design、Zustand、Axios
 - 部署：Docker Compose
 
 ## 默认账号
@@ -27,8 +27,6 @@ npm run dev
 
 ### 后端
 
-宿主机没有 Java 17 / Maven 也可以直接使用 Docker 构建运行。
-
 ```bash
 cd deploy
 docker compose up --build
@@ -37,7 +35,7 @@ docker compose up --build
 启动后访问：
 
 - 前端：[http://localhost](http://localhost)
-- 后端接口：[http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- 后端接口文档：[http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
 ## 首期功能
 
@@ -49,3 +47,7 @@ docker compose up --build
 - 定时任务与执行日志
 - 文件上传
 - 示例业务模块
+
+## 文档
+
+- 初始任务说明：[docs/initial-requirements.md](/D:/JavaProject/tiny-admin/docs/initial-requirements.md)
