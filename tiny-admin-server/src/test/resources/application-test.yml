@@ -12,6 +12,7 @@ spring:
   sql:
     init:
       mode: always
+      encoding: UTF-8
   quartz:
     job-store-type: memory
 tiny-admin:

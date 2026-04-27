@@ -6,14 +6,14 @@ import { LoginPage } from '../../features/auth/LoginPage'
 import { AppShell } from '../../layouts/AppShell'
 
 function ProtectedRoute() {
-  const { user, bootstrap } = useAuthStore()
+  const { user, bootstrap, bootstrapped } = useAuthStore()
   const location = useLocation()
 
   useEffect(() => {
     void bootstrap()
   }, [bootstrap])
 
-  if (user === undefined) {
+  if (!bootstrapped) {
     return <Spin fullscreen />
   }
 

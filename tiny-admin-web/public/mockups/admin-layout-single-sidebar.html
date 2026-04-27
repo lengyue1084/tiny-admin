@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tiny Admin 单侧栏布局方案</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Source+Serif+4:opsz,wght@8..60,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #eef4f6;
+        --bg-2: #e6eef2;
+        --paper: #f7fafb;
+        --paper-strong: #ffffff;
+        --sidebar: #101823;
+        --sidebar-deep: #0a121b;
+        --sidebar-line: rgba(255, 255, 255, 0.08);
+        --ink: #172230;
+        --muted: #667586;
+        --line: rgba(23, 34, 48, 0.08);
+        --line-strong: rgba(23, 34, 48, 0.15);
+        --accent: #18b8c9;
+        --accent-2: #0f7f8c;
+        --accent-soft: rgba(24, 184, 201, 0.14);
+        --accent-soft-2: rgba(15, 127, 140, 0.12);
+        --warn: #f59e0b;
+        --warn-soft: rgba(245, 158, 11, 0.14);
+        --ok: #22c55e;
+        --ok-soft: rgba(34, 197, 94, 0.14);
+        --shadow: 0 18px 42px rgba(12, 24, 34, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Noto Sans SC", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(24, 184, 201, 0.08), transparent 18%),
+          radial-gradient(circle at 80% 16%, rgba(73, 137, 255, 0.06), transparent 18%),
+          radial-gradient(circle at bottom right, rgba(13, 89, 122, 0.05), transparent 20%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 286px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 18px 16px;
+        background:
+          radial-gradient(circle at top left, rgba(24, 184, 201, 0.15), transparent 24%),
+          linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-deep) 100%);
+        color: #f3f6f7;
+        box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 8px 10px 20px;
+        border-bottom: 1px solid var(--sidebar-line);
+      }
+
+      .brand-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #18b8c9 0%, #5fd5e3 100%);
+        color: white;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        box-shadow: 0 12px 24px rgba(24, 184, 201, 0.24);
+      }
+
+      .brand-copy small {
+        display: block;
+        color: rgba(255, 255, 255, 0.48);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .brand-copy strong {
+        display: block;
+        margin-top: 4px;
+        font-family: "Source Serif 4", serif;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .workspace-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.74);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-group {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav-title {
+        padding: 0 12px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .nav-item {
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 12px;
+        border-radius: 14px;
+        color: rgba(255, 255, 255, 0.76);
+      }
+
+      .nav-item.active {
+        background: linear-gradient(180deg, rgba(24, 184, 201, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+        box-shadow: inset 0 0 0 1px rgba(24, 184, 201, 0.16);
+      }
+
+      .nav-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.07);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .nav-item.active .nav-icon {
+        background: linear-gradient(135deg, #18b8c9 0%, #55d2df 100%);
+      }
+
+      .nav-copy strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .nav-copy span {
+        display: block;
+        margin-top: 2px;
+        color: rgba(255, 255, 255, 0.46);
+        font-size: 12px;
+      }
+
+      .nav-count {
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .sidebar-panel {
+        margin-top: auto;
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(24, 184, 201, 0.07) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .sidebar-panel small {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .sidebar-panel strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 22px;
+      }
+
+      .sidebar-panel p {
+        margin: 8px 0 0;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.7;
+        font-size: 13px;
+      }
+
+      .main {
+        display: grid;
+        grid-template-rows: 78px minmax(0, 1fr);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 22px;
+        background: rgba(248, 251, 252, 0.92);
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(10px);
+      }
+
+      .topbar-left,
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .search {
+        min-width: 360px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.86);
+        color: var(--muted);
+        font-size: 14px;
+        box-shadow: 0 10px 22px rgba(18, 27, 34, 0.04);
+      }
+
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .crumb strong {
+        color: var(--ink);
+      }
+
+      .status,
+      .user {
+        height: 42px;
+        display: flex;
+        align-items: center;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid var(--line);
+      }
+
+      .status {
+        gap: 10px;
+        padding: 0 14px;
+        color: var(--ink);
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 0 6px var(--ok-soft);
+      }
+
+      .user {
+        gap: 12px;
+        padding: 0 10px 0 12px;
+      }
+
+      .avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #d7f3f7 0%, #a8e6ee 100%);
+        color: #0f7f8c;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .user-copy small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .user-copy strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .content {
+        padding: 20px 22px 22px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero {
+        padding: 24px;
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at top right, rgba(24, 184, 201, 0.12), transparent 22%),
+          linear-gradient(180deg, #ffffff 0%, #f8fbfc 100%);
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        box-shadow: var(--shadow);
+      }
+
+      .hero-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .hero-label {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-2);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .hero h1 {
+        margin: 14px 0 10px;
+        font-size: 34px;
+        line-height: 1.12;
+        letter-spacing: -0.04em;
+        max-width: 760px;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 760px;
+        color: var(--muted);
+        line-height: 1.8;
+        font-size: 14px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .action {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .action.primary {
+        border-color: transparent;
+        background: linear-gradient(135deg, #18b8c9 0%, #4ccfe0 100%);
+        color: white;
+        box-shadow: 0 12px 22px rgba(24, 184, 201, 0.22);
+      }
+
+      .hero-side {
+        min-width: 250px;
+        padding: 18px;
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at top right, rgba(24, 184, 201, 0.18), transparent 28%),
+          linear-gradient(180deg, #16202d 0%, #0e1720 100%);
+        color: #f4f7f6;
+      }
+
+      .hero-side small {
+        color: rgba(255, 255, 255, 0.54);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .hero-side strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 30px;
+      }
+
+      .hero-side ul {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: rgba(255, 255, 255, 0.76);
+        line-height: 1.9;
+        font-size: 13px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .stat {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(26, 36, 48, 0.06);
+      }
+
+      .stat small {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 26px;
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: 1.55fr 1fr;
+        gap: 18px;
+      }
+
+      .panel {
+        padding: 22px;
+        border-radius: 20px;
+        background: rgba(250, 252, 252, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .panel-sub {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 10px;
+        background: rgba(26, 36, 48, 0.05);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .chip.active {
+        background: var(--accent-soft);
+        color: var(--accent-2);
+      }
+
+      .table {
+        display: grid;
+        gap: 0;
+      }
+
+      .thead,
+      .trow {
+        display: grid;
+        grid-template-columns: 1.45fr 1fr 110px 120px 90px;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .thead {
+        min-height: 42px;
+        padding: 0 2px 10px;
+        border-bottom: 1px solid var(--line-strong);
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .trow {
+        min-height: 62px;
+        padding: 0 2px;
+        border-bottom: 1px solid rgba(26, 36, 48, 0.05);
+      }
+
+      .main-text strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .main-text span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .pill.focus {
+        color: var(--accent-2);
+        background: var(--accent-soft);
+      }
+
+      .pill.live {
+        color: var(--ok);
+        background: var(--ok-soft);
+      }
+
+      .pill.warn {
+        color: var(--warn);
+        background: var(--warn-soft);
+      }
+
+      .mini-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .mini-card {
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .mini-card strong {
+        display: block;
+        font-size: 15px;
+      }
+
+      .mini-card span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .mini-card .meta {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .mini-card .meta em {
+        color: var(--muted);
+        font-style: normal;
+        font-size: 12px;
+      }
+
+      .progress {
+        height: 7px;
+        margin-top: 12px;
+        border-radius: 999px;
+        background: rgba(26, 36, 48, 0.08);
+        overflow: hidden;
+      }
+
+      .progress::after {
+        content: "";
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #18b8c9 0%, #76d9e5 100%);
+      }
+
+      .progress.p1::after {
+        width: 82%;
+      }
+
+      .progress.p2::after {
+        width: 64%;
+      }
+
+      .progress.p3::after {
+        width: 58%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">TA</div>
+          <div class="brand-copy">
+            <small>Admin Workspace</small>
+            <strong>Tiny Admin</strong>
+          </div>
+        </div>
+
+        <span class="workspace-badge">单侧栏布局方案</span>
+
+        <div class="nav-group">
+          <div class="nav-title">一级模块</div>
+          <div class="nav-item active">
+            <div class="nav-icon">系</div>
+            <div class="nav-copy">
+              <strong>系统管理</strong>
+              <span>用户、角色、菜单、组织</span>
+            </div>
+            <div class="nav-count">08</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">审</div>
+            <div class="nav-copy">
+              <strong>审计日志</strong>
+              <span>操作日志与登录日志</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">监</div>
+            <div class="nav-copy">
+              <strong>运维监控</strong>
+              <span>服务、缓存、在线用户</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">调</div>
+            <div class="nav-copy">
+              <strong>任务调度</strong>
+              <span>定时任务与执行链路</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">业</div>
+            <div class="nav-copy">
+              <strong>示例业务</strong>
+              <span>标准扩展模块模板</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-title">当前模块</div>
+          <div class="nav-item active">
+            <div class="nav-icon">用</div>
+            <div class="nav-copy">
+              <strong>用户管理</strong>
+              <span>账号、状态、数据范围</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">角</div>
+            <div class="nav-copy">
+              <strong>角色管理</strong>
+              <span>授权策略与菜单配置</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">菜</div>
+            <div class="nav-copy">
+              <strong>菜单管理</strong>
+              <span>导航结构与权限点</span>
+            </div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon">部</div>
+            <div class="nav-copy">
+              <strong>部门管理</strong>
+              <span>组织归属与负责人</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-panel">
+          <small>当前方向</small>
+          <strong>冷静、现代、可长期使用</strong>
+          <p>继续保留单侧栏结构，把颜色、对比和信息块压回真正企业后台的成熟状态。</p>
+        </div>
+      </aside>
+
+      <section class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="search">搜索页面、命令、用户、参数配置</div>
+            <div class="crumb">
+              <span>系统管理</span>
+              <span>/</span>
+              <strong>用户管理</strong>
+            </div>
+          </div>
+          <div class="topbar-right">
+            <div class="status">
+              <span class="status-dot"></span>
+              <span>核心服务运行正常</span>
+            </div>
+            <div class="user">
+              <div class="avatar">管</div>
+              <div class="user-copy">
+                <small>超级管理员</small>
+                <strong>系统管理员</strong>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main class="content">
+          <section class="hero">
+            <div class="hero-head">
+              <div>
+                <span class="hero-label">冰川青现代版</span>
+                <h1>把系统管理做成真正能长期工作的后台界面。</h1>
+                <p>
+                  这一版不再强调展示感，而是把搜索、列表、状态和快捷动作重新组织成更像真实工作台的节奏。
+                  颜色转为更克制的冷调冰川青，侧栏更稳，内容区更清透，整体会更像当代企业产品而不是传统后台模板。
+                </p>
+                <div class="hero-actions">
+                  <div class="action primary">新建用户</div>
+                  <div class="action">批量导入</div>
+                  <div class="action">权限复核</div>
+                  <div class="action">查看审计</div>
+                </div>
+              </div>
+              <div class="hero-side">
+                <small>界面信号</small>
+                <strong>更冷静，更可信</strong>
+                <ul>
+                  <li>冰川青作为统一强调色</li>
+                  <li>深海灰侧栏稳定层级关系</li>
+                  <li>卡片与状态反馈更像真实产品</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <small>可见模块</small>
+                <strong>05</strong>
+              </div>
+              <div class="stat">
+                <small>今日重点</small>
+                <strong>19</strong>
+              </div>
+              <div class="stat">
+                <small>在线会话</small>
+                <strong>124</strong>
+              </div>
+              <div class="stat">
+                <small>待处理告警</small>
+                <strong>03</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="workspace-grid">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>用户管理工作区</h2>
+                  <div class="panel-sub">把常用操作、筛选和列表密度收回到真实后台工作区的节奏里。</div>
+                </div>
+              </div>
+
+              <div class="toolbar">
+                <div class="chip active">全部用户</div>
+                <div class="chip">停用账号</div>
+                <div class="chip">待复核</div>
+                <div class="chip">最近新增</div>
+              </div>
+
+              <div class="table">
+                <div class="thead">
+                  <div>用户</div>
+                  <div>角色</div>
+                  <div>状态</div>
+                  <div>最后活跃</div>
+                  <div>操作</div>
+                </div>
+                <div class="trow">
+                  <div class="main-text">
+                    <strong>系统管理员</strong>
+                    <span>admin · 平台总部 · 全部数据权限</span>
+                  </div>
+                  <div>SUPER_ADMIN</div>
+                  <div><span class="pill live">正常</span></div>
+                  <div>10 分钟前</div>
+                  <div><span class="pill focus">编辑</span></div>
+                </div>
+                <div class="trow">
+                  <div class="main-text">
+                    <strong>审计专员</strong>
+                    <span>audit.ops · 安全与合规 · 本部门数据</span>
+                  </div>
+                  <div>AUDITOR</div>
+                  <div><span class="pill warn">待审</span></div>
+                  <div>32 分钟前</div>
+                  <div><span class="pill focus">查看</span></div>
+                </div>
+                <div class="trow">
+                  <div class="main-text">
+                    <strong>运维值班</strong>
+                    <span>ops.duty · 运维中心 · 监控与调度</span>
+                  </div>
+                  <div>OPS_ADMIN</div>
+                  <div><span class="pill live">正常</span></div>
+                  <div>1 小时前</div>
+                  <div><span class="pill focus">编辑</span></div>
+                </div>
+                <div class="trow">
+                  <div class="main-text">
+                    <strong>业务配置岗</strong>
+                    <span>biz.config · 业务中台 · 参数与字典</span>
+                  </div>
+                  <div>CONFIG_EDITOR</div>
+                  <div><span class="pill live">正常</span></div>
+                  <div>2 小时前</div>
+                  <div><span class="pill focus">编辑</span></div>
+                </div>
+              </div>
+            </article>
+
+            <aside class="mini-grid">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>推进节奏</h2>
+                    <div class="panel-sub">右侧承接推进事项、风险摘要和当天优先级，不做多余装饰。</div>
+                  </div>
+                </div>
+
+                <div class="mini-card">
+                  <strong>权限模型梳理</strong>
+                  <span>统一菜单权限、按钮权限和路由可见性契约。</span>
+                  <div class="progress p1"></div>
+                  <div class="meta">
+                    <em>84%</em>
+                    <span class="pill live">执行中</span>
+                  </div>
+                </div>
+
+                <div class="mini-card">
+                  <strong>部门数据范围落地</strong>
+                  <span>按组织归属和负责人关系补齐列表过滤。</span>
+                  <div class="progress p2"></div>
+                  <div class="meta">
+                    <em>64%</em>
+                    <span class="pill warn">评审中</span>
+                  </div>
+                </div>
+
+                <div class="mini-card">
+                  <strong>工作区精修</strong>
+                  <span>继续优化搜索入口、列表密度和监控页层级。</span>
+                  <div class="progress p3"></div>
+                  <div class="meta">
+                    <em>58%</em>
+                    <span class="pill live">草稿版</span>
+                  </div>
+                </div>
+              </article>
+            </aside>
+          </section>
+        </main>
+      </section>
+    </div>
+  </body>
+</html>

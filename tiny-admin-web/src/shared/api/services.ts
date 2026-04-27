@@ -39,6 +39,121 @@ export type MenuNode = {
   children?: MenuNode[]
 }
 
+export type MenuRecord = {
+  id: number
+  parentId: number
+  name: string
+  path?: string
+  component?: string
+  icon?: string
+  type: 'CATALOG' | 'MENU' | 'BUTTON'
+  permissionCode?: string
+  orderNum: number
+  visible?: number
+  status?: number
+}
+
+export type DeptRecord = {
+  id: number
+  parentId: number
+  name: string
+  orderNum: number
+  leader?: string
+  phone?: string
+  email?: string
+  status: number
+}
+
+export type PostRecord = {
+  id: number
+  name: string
+  code: string
+  orderNum: number
+  status: number
+  remark?: string
+}
+
+export type RoleOption = {
+  value: number
+  label: string
+  code: string
+}
+
+export type PostOption = {
+  value: number
+  label: string
+  code: string
+}
+
+export type UserRecord = {
+  id: number
+  username: string
+  nickName: string
+  email?: string
+  phone?: string
+  deptId?: number
+  deptName?: string
+  postId?: number
+  postName?: string
+  status: number
+  dataScope: string
+  roleIds: number[]
+}
+
+export type RoleRecord = {
+  id: number
+  name: string
+  code: string
+  dataScope: string
+  status: number
+  remark?: string
+  menuIds: number[]
+}
+
+export type DictTypeRecord = {
+  id: number
+  name: string
+  typeCode: string
+  status: number
+  remark?: string
+}
+
+export type DictDataRecord = {
+  id: number
+  typeId: number
+  label: string
+  value: string
+  tagType?: string
+  orderNum: number
+  status: number
+}
+
+export type ConfigRecord = {
+  id: number
+  name: string
+  configKey: string
+  configValue: string
+  builtin: number
+  remark?: string
+}
+
+export type NoticeRecord = {
+  id: number
+  title: string
+  type: string
+  content: string
+  status: number
+}
+
+export type SystemMeta = {
+  roleOptions: RoleOption[]
+  postOptions: PostOption[]
+  deptOptions: DeptRecord[]
+  deptTree: Array<DeptRecord & { children?: SystemMeta['deptTree'] }>
+  menuOptions: MenuRecord[]
+  menuTree: MenuNode[]
+}
+
 export type UploadResult = {
   fileId: string
   url: string
@@ -66,28 +181,35 @@ export const authApi = {
 }
 
 export const systemApi = {
+  meta: () => unwrap(apiClient.get<ApiEnvelope<SystemMeta>>('/api/system/meta')),
   currentMenus: () => unwrap(apiClient.get<ApiEnvelope<MenuNode[]>>('/api/system/menus/current')),
-  users: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/users')),
-  saveUser: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/users', payload)),
+  users: () => unwrap(apiClient.get<ApiEnvelope<UserRecord[]>>('/api/system/users')),
+  saveUser: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<UserRecord>>('/api/system/users', payload)),
   deleteUser: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/users/${id}`)),
-  roles: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/roles')),
-  saveRole: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/roles', payload)),
+  roles: () => unwrap(apiClient.get<ApiEnvelope<RoleRecord[]>>('/api/system/roles')),
+  saveRole: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<RoleRecord>>('/api/system/roles', payload)),
   deleteRole: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/roles/${id}`)),
-  menus: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/menus')),
-  saveMenu: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/menus', payload)),
+  menus: () => unwrap(apiClient.get<ApiEnvelope<MenuRecord[]>>('/api/system/menus')),
+  saveMenu: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<MenuRecord>>('/api/system/menus', payload)),
   deleteMenu: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/menus/${id}`)),
-  depts: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/depts')),
-  saveDept: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/depts', payload)),
-  posts: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/posts')),
-  savePost: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/posts', payload)),
-  dictTypes: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/dicts/types')),
-  dictData: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/dicts/data')),
-  saveDictType: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/dicts/types', payload)),
-  saveDictData: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/dicts/data', payload)),
-  configs: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/configs')),
-  saveConfig: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/configs', payload)),
-  notices: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/system/notices')),
-  saveNotice: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/system/notices', payload)),
+  depts: () => unwrap(apiClient.get<ApiEnvelope<DeptRecord[]>>('/api/system/depts')),
+  saveDept: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DeptRecord>>('/api/system/depts', payload)),
+  deleteDept: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/depts/${id}`)),
+  posts: () => unwrap(apiClient.get<ApiEnvelope<PostRecord[]>>('/api/system/posts')),
+  savePost: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<PostRecord>>('/api/system/posts', payload)),
+  deletePost: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/posts/${id}`)),
+  dictTypes: () => unwrap(apiClient.get<ApiEnvelope<DictTypeRecord[]>>('/api/system/dicts/types')),
+  dictData: () => unwrap(apiClient.get<ApiEnvelope<DictDataRecord[]>>('/api/system/dicts/data')),
+  saveDictType: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DictTypeRecord>>('/api/system/dicts/types', payload)),
+  deleteDictType: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/dicts/types/${id}`)),
+  saveDictData: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DictDataRecord>>('/api/system/dicts/data', payload)),
+  deleteDictData: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/dicts/data/${id}`)),
+  configs: () => unwrap(apiClient.get<ApiEnvelope<ConfigRecord[]>>('/api/system/configs')),
+  saveConfig: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<ConfigRecord>>('/api/system/configs', payload)),
+  deleteConfig: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/configs/${id}`)),
+  notices: () => unwrap(apiClient.get<ApiEnvelope<NoticeRecord[]>>('/api/system/notices')),
+  saveNotice: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<NoticeRecord>>('/api/system/notices', payload)),
+  deleteNotice: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/notices/${id}`)),
 }
 
 export const auditApi = {

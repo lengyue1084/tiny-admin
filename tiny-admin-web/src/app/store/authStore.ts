@@ -3,6 +3,7 @@ import { authApi, systemApi, type CurrentUser, type LoginPayload, type MenuNode 
 import { authStorage } from '../../shared/hooks/storage'
 
 type AuthState = {
+  bootstrapped: boolean
   loading: boolean
   user: CurrentUser | null
   menus: MenuNode[]
@@ -13,6 +14,7 @@ type AuthState = {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
+  bootstrapped: false,
   loading: false,
   user: authStorage.getUser(),
   menus: [],
@@ -30,16 +32,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   bootstrap: async () => {
     if (!authStorage.getAccessToken()) {
+      set({ bootstrapped: true, user: null, menus: [] })
       return
     }
     try {
       const profile = await authApi.profile()
       const menus = await systemApi.currentMenus()
       authStorage.setSession(authStorage.getAccessToken()!, authStorage.getRefreshToken() ?? '', profile.data)
-      set({ user: profile.data, menus: menus.data })
+      set({ user: profile.data, menus: menus.data, bootstrapped: true })
     } catch {
       authStorage.clear()
-      set({ user: null, menus: [] })
+      set({ user: null, menus: [], bootstrapped: true })
     }
   },
   logout: async () => {
@@ -47,7 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authApi.logout()
     } finally {
       authStorage.clear()
-      set({ user: null, menus: [] })
+      set({ user: null, menus: [], bootstrapped: true })
     }
   },
   refreshMenus: async () => {
