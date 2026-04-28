@@ -26,9 +26,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { AutoComplete, Avatar, Breadcrumb, Button, Descriptions, Dropdown, Form, Input, Layout, Modal, Tag, message } from 'antd'
+import type { InputRef } from 'antd'
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../app/store/authStore'
 import { AuditLoginLogsPage, AuditOperLogsPage } from '../features/audit/AuditPages'
@@ -115,10 +116,13 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
   const [expandedCategoryId, setExpandedCategoryId] = useState<number | null>(null)
   const [globalSearch, setGlobalSearch] = useState('')
+  const [searchExpanded, setSearchExpanded] = useState(false)
   const [profileVisible, setProfileVisible] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordForm] = Form.useForm<PasswordFormValues>()
+  const searchContainerRef = useRef<HTMLDivElement | null>(null)
+  const searchInputRef = useRef<InputRef | null>(null)
 
   const categories = useMemo(
     () => menus.filter((menu) => menu.type === 'CATALOG').sort((a, b) => a.orderNum - b.orderNum),
@@ -140,6 +144,52 @@ export function AppShell() {
       setExpandedCategoryId(activeCategory?.id ?? null)
     }
   }, [activeCategory?.id, collapsed])
+
+  useEffect(() => {
+    if (!searchExpanded) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus()
+    }, 40)
+
+    return () => window.clearTimeout(timer)
+  }, [searchExpanded])
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!searchExpanded) {
+        return
+      }
+      if (searchContainerRef.current?.contains(event.target as Node)) {
+        return
+      }
+      if (!globalSearch.trim()) {
+        setSearchExpanded(false)
+      }
+    }
+
+    const handleShortcut = (event: KeyboardEvent) => {
+      const triggerKey = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)
+      if (triggerKey) {
+        event.preventDefault()
+        setSearchExpanded(true)
+        return
+      }
+
+      if (event.key === 'Escape' && searchExpanded) {
+        setSearchExpanded(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleShortcut)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleShortcut)
+    }
+  }, [globalSearch, searchExpanded])
 
   const page = pageRegistry[location.pathname] ?? pageRegistry['/']
 
@@ -185,6 +235,18 @@ export function AppShell() {
       ),
     }))
   }, [globalSearch, searchEntries])
+
+  const closeSearch = (force = false) => {
+    if (force || !globalSearch.trim()) {
+      setSearchExpanded(false)
+    }
+  }
+
+  const jumpToSearchTarget = (target: string) => {
+    setGlobalSearch('')
+    setSearchExpanded(false)
+    navigate(target)
+  }
 
   const handlePasswordSubmit = async () => {
     const values = await passwordForm.validateFields()
@@ -309,30 +371,6 @@ export function AppShell() {
       <Layout className="shell__stage">
         <Header className="shell__header">
           <div className="shell__headerLeft">
-            <AutoComplete
-              className="shell__search"
-              options={searchOptions}
-              value={globalSearch}
-              onChange={setGlobalSearch}
-              onSelect={(value) => {
-                setGlobalSearch('')
-                navigate(value)
-              }}
-            >
-              <Input
-                name="global-search"
-                prefix={<SearchOutlined />}
-                placeholder="搜索页面、命令、用户、参数配置"
-                size="large"
-                onPressEnter={() => {
-                  const firstMatch = searchOptions[0]?.value
-                  if (firstMatch) {
-                    setGlobalSearch('')
-                    navigate(String(firstMatch))
-                  }
-                }}
-              />
-            </AutoComplete>
             <Breadcrumb
               items={[
                 { title: '平台后台' },
@@ -343,11 +381,62 @@ export function AppShell() {
           </div>
 
           <div className="shell__headerRight">
+            <div
+              className={clsx('shell__searchDock', searchExpanded && 'is-expanded')}
+              ref={searchContainerRef}
+            >
+              <Button
+                className="shell__searchTrigger"
+                type="text"
+                icon={<SearchOutlined />}
+                title="搜索页面（Ctrl/Cmd + K）"
+                onClick={() => setSearchExpanded((value) => !value)}
+              />
+              <div className="shell__searchField">
+                <AutoComplete
+                  className="shell__search"
+                  options={searchOptions}
+                  value={globalSearch}
+                  onChange={setGlobalSearch}
+                  onSelect={(value) => {
+                    jumpToSearchTarget(value)
+                  }}
+                >
+                  <Input
+                    ref={searchInputRef}
+                    name="global-search"
+                    prefix={<SearchOutlined />}
+                    placeholder="搜索页面、命令、用户、参数配置"
+                    size="large"
+                    bordered={false}
+                    onBlur={() => closeSearch(false)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        event.preventDefault()
+                        closeSearch(true)
+                        return
+                      }
+
+                      if (event.key === 'Enter') {
+                        const firstMatch = searchOptions[0]?.value
+                        if (firstMatch) {
+                          event.preventDefault()
+                          jumpToSearchTarget(String(firstMatch))
+                        }
+                      }
+                    }}
+                  />
+                </AutoComplete>
+              </div>
+            </div>
+
             <div className="shell__status">
               <span className="shell__statusDot" />
               <span>核心服务运行正常</span>
             </div>
+
             <Tag color="cyan">{user.roles.join(' / ')}</Tag>
+
             <Dropdown
               trigger={['click']}
               menu={{

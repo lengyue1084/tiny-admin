@@ -10,17 +10,29 @@ Tiny Admin is a monolithic admin platform for enterprise back-office scenarios, 
 
 ## Screenshots
 
-### Login
-
-![Login page](docs/images/login-page.png)
-
 ### Dashboard
 
-![Dashboard](docs/images/dashboard.png)
+![Dashboard](docs/images/dashboard-main.png)
 
-### System Management
+### User Management
 
-![System users page](docs/images/system-users.png)
+![User management](docs/images/system-users-main.png)
+
+### Menu Management
+
+![Menu management](docs/images/system-menus-main.png)
+
+### Operation Logs
+
+![Operation logs](docs/images/audit-oper-logs-main.png)
+
+### Online Users
+
+![Online users](docs/images/monitor-online-users-main.png)
+
+### Scheduler Jobs
+
+![Scheduler jobs](docs/images/scheduler-jobs-main.png)
 
 ## Default Account
 
