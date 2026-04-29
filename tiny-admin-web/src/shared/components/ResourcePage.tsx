@@ -1,7 +1,9 @@
-import { PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import type { ListQuery } from '../api/services'
+import { useExcelExporter } from '../hooks/useExcelExporter'
+import type { ExportColumn } from '../utils/export'
 
 type ResourceField =
   | { name: string; label: string; type?: 'text' | 'textarea'; required?: boolean }
@@ -41,6 +43,10 @@ type ResourcePageProps<T extends { id?: number | string }> = {
   modalWidth?: number
   search?: false | ResourceSearchConfig
   filters?: ResourceFilterConfig<T>[]
+  exportConfig?: {
+    columns?: ExportColumn<T>[]
+    fileName?: string
+  }
 }
 
 export function ResourcePage<T extends { id?: number | string }>({
@@ -55,8 +61,10 @@ export function ResourcePage<T extends { id?: number | string }>({
   modalWidth = 620,
   search,
   filters = [],
+  exportConfig,
 }: ResourcePageProps<T>) {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const [rows, setRows] = useState<T[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -176,6 +184,18 @@ export function ResourcePage<T extends { id?: number | string }>({
     ]
   }, [columns, editable, form, hasActions, message, remove])
 
+  const resolvedExportColumns = useMemo<ExportColumn<T>[]>(
+    () =>
+      exportConfig?.columns ??
+      columns
+        .filter((column) => column?.key !== 'action' && typeof column?.title === 'string' && column?.dataIndex)
+        .map((column) => ({
+          title: column.title as string,
+          dataIndex: column.dataIndex as string | Array<string | number>,
+        })),
+    [columns, exportConfig?.columns],
+  )
+
   return (
     <>
       <Card className="workspace-card">
@@ -224,6 +244,24 @@ export function ResourcePage<T extends { id?: number | string }>({
             ))}
             <Button icon={<ReloadOutlined />} onClick={() => void refresh(requestQuery)}>
               刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              disabled={resolvedExportColumns.length === 0}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: resolvedExportColumns,
+                  errorMessage: '导出失败',
+                  fileName: exportConfig?.fileName ?? title,
+                  loadRecords: async () => {
+                    const result = await load(requestQuery)
+                    return result.data
+                  },
+                })
+              }
+            >
+              导出
             </Button>
             {editable ? (
               <Button

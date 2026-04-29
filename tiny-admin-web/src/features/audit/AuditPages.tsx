@@ -33,6 +33,17 @@ export function AuditOperLogsPage() {
           ],
         },
       ]}
+      exportConfig={{
+        fileName: '操作日志',
+        columns: [
+          { title: '模块', dataIndex: 'module' },
+          { title: '动作', dataIndex: 'action' },
+          { title: '操作人', dataIndex: 'operatorName' },
+          { title: '请求路径', dataIndex: 'requestUri' },
+          { title: '执行结果', value: (record: any) => (record.success === 1 ? '成功' : '失败') },
+          { title: '时间', dataIndex: 'createdAt' },
+        ],
+      }}
       columns={[
         { title: '模块', dataIndex: 'module', width: 140 },
         { title: '动作', dataIndex: 'action', width: 160 },
@@ -72,6 +83,16 @@ export function AuditLoginLogsPage() {
           ],
         },
       ]}
+      exportConfig={{
+        fileName: '登录日志',
+        columns: [
+          { title: '用户名', dataIndex: 'username' },
+          { title: 'IP', dataIndex: 'ip' },
+          { title: '状态', value: (record: any) => loginStatusLabel(record.status) },
+          { title: '消息', dataIndex: 'message' },
+          { title: '时间', dataIndex: 'createdAt' },
+        ],
+      }}
       columns={[
         { title: '用户名', dataIndex: 'username', width: 160 },
         { title: 'IP', dataIndex: 'ip', width: 160 },

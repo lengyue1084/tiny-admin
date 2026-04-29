@@ -1,7 +1,9 @@
+import { DownloadOutlined } from '@ant-design/icons'
 import { App, Button, Card, Input, Select, Space, Table, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
-import { ResourcePage } from '../../shared/components/ResourcePage'
 import { schedulerApi } from '../../shared/api/services'
+import { useExcelExporter } from '../../shared/hooks/useExcelExporter'
+import { ResourcePage } from '../../shared/components/ResourcePage'
 
 function useDebouncedValue(value: string, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value)
@@ -40,6 +42,18 @@ export function SchedulerJobsPage() {
           ],
         },
       ]}
+      exportConfig={{
+        fileName: '定时任务',
+        columns: [
+          { title: '任务名称', dataIndex: 'name' },
+          { title: '分组', dataIndex: 'jobGroup' },
+          { title: 'Cron', dataIndex: 'cronExpression' },
+          { title: 'Bean', dataIndex: 'targetBean' },
+          { title: '方法', dataIndex: 'targetMethod' },
+          { title: '参数', dataIndex: 'args' },
+          { title: '状态', value: (record: any) => (record.status === 1 ? '启用' : '停用') },
+        ],
+      }}
       columns={[
         { title: '任务名称', dataIndex: 'name' },
         { title: '分组', dataIndex: 'jobGroup', width: 120 },
@@ -106,22 +120,25 @@ export function SchedulerJobsPage() {
 
 export function SchedulerLogsPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [success, setSuccess] = useState<number | undefined>()
   const debouncedKeyword = useDebouncedValue(keyword)
 
-  const loadLogs = async () => {
+  const loadLogs = async (queryKeyword = debouncedKeyword, querySuccess = success) => {
     setLoading(true)
     try {
       const result = await schedulerApi.logs({
-        keyword: debouncedKeyword || undefined,
-        success,
+        keyword: queryKeyword || undefined,
+        success: querySuccess,
       })
       setRows(result.data)
+      return result.data
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载任务日志失败')
+      return []
     } finally {
       setLoading(false)
     }
@@ -169,6 +186,30 @@ export function SchedulerLogsPage() {
             style={{ width: 140 }}
           />
           <Button onClick={() => void loadLogs()}>刷新</Button>
+          <Button
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            onClick={() =>
+              void exportWithLoader({
+                columns: [
+                  { title: '任务名称', dataIndex: 'jobName' },
+                  { title: '执行结果', value: (record: any) => (record.success === 1 ? '成功' : '失败') },
+                  { title: '消息', dataIndex: 'message' },
+                  { title: '时间', dataIndex: 'createdAt' },
+                ],
+                fileName: '任务执行日志',
+                loadRecords: async () => {
+                  const result = await schedulerApi.logs({
+                    keyword: debouncedKeyword || undefined,
+                    success,
+                  })
+                  return result.data
+                },
+              })
+            }
+          >
+            导出
+          </Button>
         </Space>
       </div>
 

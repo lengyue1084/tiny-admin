@@ -26,6 +26,15 @@ export function DemoProjectsPage() {
           options: projectStatusOptions,
         },
       ]}
+      exportConfig={{
+        fileName: '示例项目',
+        columns: [
+          { title: '项目名称', dataIndex: 'name' },
+          { title: '负责人', dataIndex: 'owner' },
+          { title: '状态', dataIndex: 'status' },
+          { title: '描述', dataIndex: 'description' },
+        ],
+      }}
       columns={[
         { title: '项目名称', dataIndex: 'name' },
         { title: '负责人', dataIndex: 'owner' },

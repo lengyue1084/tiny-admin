@@ -1,7 +1,8 @@
-import { DatabaseOutlined, GlobalOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, DownloadOutlined, GlobalOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { App, Button, Card, Col, Descriptions, Input, Row, Space, Statistic, Table, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { monitorApi } from '../../shared/api/services'
+import { useExcelExporter } from '../../shared/hooks/useExcelExporter'
 
 function useDebouncedValue(value: string, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value)
@@ -175,20 +176,23 @@ export function MonitorCachePage() {
 
 export function MonitorOnlineUsersPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const debouncedKeyword = useDebouncedValue(keyword)
 
-  const refresh = async () => {
+  const refresh = async (queryKeyword = debouncedKeyword) => {
     setLoading(true)
     try {
       const result = await monitorApi.onlineUsers({
-        keyword: debouncedKeyword || undefined,
+        keyword: queryKeyword || undefined,
       })
       setRows(result.data)
+      return result.data
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载在线用户失败')
+      return []
     } finally {
       setLoading(false)
     }
@@ -204,13 +208,38 @@ export function MonitorOnlineUsersPage() {
         eyebrow="在线会话"
         title="在线用户"
         description="查看当前在线会话、登录时间与最后活跃时间，必要时可以执行强制下线。"
-        metrics={[
-          { label: '当前结果', value: rows.length },
-        ]}
+        metrics={[{ label: '当前结果', value: rows.length }]}
         extra={
-          <Button icon={<ReloadOutlined />} onClick={() => void refresh()} loading={loading}>
-            刷新
-          </Button>
+          <>
+            <Button icon={<ReloadOutlined />} onClick={() => void refresh()} loading={loading}>
+              刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: [
+                    { title: '会话 ID', dataIndex: 'sessionId' },
+                    { title: '用户名', dataIndex: 'username' },
+                    { title: 'IP', dataIndex: 'ip' },
+                    { title: '登录时间', dataIndex: 'loginTime' },
+                    { title: '最后活跃', dataIndex: 'lastActiveTime' },
+                    { title: '状态', value: () => '在线' },
+                  ],
+                  fileName: '在线用户',
+                  loadRecords: async () => {
+                    const result = await monitorApi.onlineUsers({
+                      keyword: debouncedKeyword || undefined,
+                    })
+                    return result.data
+                  },
+                })
+              }
+            >
+              导出
+            </Button>
+          </>
         }
       />
 

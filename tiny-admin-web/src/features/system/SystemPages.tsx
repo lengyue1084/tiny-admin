@@ -3,6 +3,7 @@ import {
   BookOutlined,
   ControlOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -41,6 +42,8 @@ import {
   systemApi,
 } from '../../shared/api/services'
 import { ResourcePage, statusTag } from '../../shared/components/ResourcePage'
+import { useExcelExporter } from '../../shared/hooks/useExcelExporter'
+import type { ExportColumn } from '../../shared/utils/export'
 import {
   buildTreeTable,
   collectSelfAndDescendantIds,
@@ -128,7 +131,7 @@ function WorkspaceHeader({
 
 function parentMenuHelperText(menuType?: string, parentName?: string | null) {
   if (!menuType) {
-    return '先选择菜单类型，再决定放到哪个层级。'
+    return '先选择菜单类型，再确认要放到哪个层级。'
   }
   if (!parentName) {
     return menuType === 'CATALOG' ? '当前会作为一级模块显示在导航中。' : '当前会放在最外层，请确认是否符合导航层级。'
@@ -141,6 +144,7 @@ function parentMenuHelperText(menuType?: string, parentName?: string | null) {
 
 export function SystemUsersPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const { meta, loading: metaLoading, refreshMeta } = useSystemMeta()
   const [rows, setRows] = useState<UserRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -173,6 +177,20 @@ export function SystemUsersPage() {
   }, [debouncedKeyword, status, deptId])
 
   const roleMap = useMemo(() => new Map(meta?.roleOptions.map((item) => [item.value, item.label]) ?? []), [meta?.roleOptions])
+  const exportColumns: ExportColumn<UserRecord>[] = [
+    { title: '用户名', dataIndex: 'username' },
+    { title: '显示名称', dataIndex: 'nickName' },
+    { title: '邮箱', value: (record) => record.email || '-' },
+    { title: '手机号', value: (record) => record.phone || '-' },
+    { title: '部门', value: (record) => record.deptName || '-' },
+    { title: '岗位', value: (record) => record.postName || '-' },
+    {
+      title: '角色',
+      value: (record) => (record.roleIds?.length ? record.roleIds.map((roleId) => roleMap.get(roleId) ?? `角色 ${roleId}`) : ['未分配']),
+    },
+    { title: '数据范围', value: (record) => dataScopeLabel(record.dataScope) },
+    { title: '状态', value: (record) => statusLabel(record.status) },
+  ]
 
   const handleCreate = () => {
     setCurrent(null)
@@ -274,6 +292,26 @@ export function SystemUsersPage() {
           <>
             <Button icon={<ReloadOutlined />} onClick={() => void Promise.all([loadUsers(), refreshMeta()])}>
               刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: exportColumns,
+                  fileName: '用户管理',
+                  loadRecords: async () => {
+                    const response = await systemApi.users({
+                      keyword: debouncedKeyword || undefined,
+                      status,
+                      deptId,
+                    })
+                    return response.data
+                  },
+                })
+              }
+            >
+              导出
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} loading={metaLoading}>
               新建用户
@@ -379,6 +417,7 @@ export function SystemUsersPage() {
 
 export function SystemRolesPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const { meta, loading: metaLoading, refreshMeta } = useSystemMeta()
   const [rows, setRows] = useState<RoleRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -412,6 +451,14 @@ export function SystemRolesPage() {
   }, [debouncedKeyword, roleDataScope, roleStatus])
 
   const menuCount = meta?.menuOptions?.filter((item) => item.type !== 'BUTTON').length ?? 0
+  const exportColumns: ExportColumn<RoleRecord>[] = [
+    { title: '角色名称', dataIndex: 'name' },
+    { title: '角色编码', dataIndex: 'code' },
+    { title: '数据范围', value: (record) => dataScopeLabel(record.dataScope) },
+    { title: '菜单授权数', value: (record) => record.menuIds.length },
+    { title: '状态', value: (record) => statusLabel(record.status) },
+    { title: '备注', value: (record) => record.remark || '-' },
+  ]
 
   const openDrawer = (record?: RoleRecord) => {
     setCurrent(record ?? null)
@@ -448,6 +495,26 @@ export function SystemRolesPage() {
           <>
             <Button icon={<ReloadOutlined />} onClick={() => void Promise.all([loadRoles(), refreshMeta()])}>
               刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: exportColumns,
+                  fileName: '角色管理',
+                  loadRecords: async () => {
+                    const response = await systemApi.roles({
+                      keyword: debouncedKeyword || undefined,
+                      status: roleStatus,
+                      dataScope: roleDataScope,
+                    })
+                    return response.data
+                  },
+                })
+              }
+            >
+              导出
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()} loading={metaLoading}>
               新建角色
@@ -562,6 +629,7 @@ export function SystemRolesPage() {
 
 export function SystemMenusPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const [rows, setRows] = useState<MenuRecord[]>([])
   const [allRows, setAllRows] = useState<MenuRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -609,6 +677,17 @@ export function SystemMenusPage() {
     () => (typeof parentIdValue === 'number' && parentIdValue > 0 ? menuMap.get(parentIdValue) ?? null : null),
     [menuMap, parentIdValue],
   )
+  const exportColumns: ExportColumn<MenuRecord>[] = [
+    { title: '菜单名称', dataIndex: 'name' },
+    { title: '类型', value: (record) => menuTypeLabel(record.type) },
+    { title: '路由', value: (record) => record.path || '-' },
+    { title: '组件', value: (record) => record.component || '-' },
+    { title: '上级', value: (record) => (record.parentId ? menuMap.get(record.parentId)?.name ?? '-' : '一级节点') },
+    { title: '权限标识', value: (record) => record.permissionCode || '-' },
+    { title: '排序', value: (record) => record.orderNum },
+    { title: '显示状态', value: (record) => (record.visible === 1 ? '是' : '否') },
+    { title: '启用状态', value: (record) => statusLabel(record.status ?? 0) },
+  ]
 
   const openDrawer = (record?: MenuRecord, parentId?: number) => {
     setCurrent(record ?? null)
@@ -627,7 +706,7 @@ export function SystemMenusPage() {
     <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <WorkspaceHeader
         title="菜单管理"
-        description="一级模块、二级页面和按钮权限统一在这里维护，支持直接添加子节点，避免手动记上级 ID。"
+        description="一级模块、二级页面和按钮权限统一在这里维护，支持直接添加子节点，避免手动记录上级 ID。"
         metrics={[
           { label: '菜单总数', value: allRows.length, icon: <BookOutlined /> },
           { label: '目录节点', value: allRows.filter((item) => item.type === 'CATALOG').length, icon: <BookOutlined /> },
@@ -642,6 +721,24 @@ export function SystemMenusPage() {
               }}
             >
               刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: exportColumns,
+                  fileName: '菜单管理',
+                  loadRecords: async () => {
+                    const response = await systemApi.menus({
+                      keyword: debouncedKeyword || undefined,
+                    })
+                    return response.data
+                  },
+                })
+              }
+            >
+              导出
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>
               新建一级菜单
@@ -812,6 +909,7 @@ export function SystemMenusPage() {
 
 export function SystemDeptsPage() {
   const { message } = App.useApp()
+  const { exporting, exportWithLoader } = useExcelExporter()
   const [rows, setRows] = useState<DeptRecord[]>([])
   const [allRows, setAllRows] = useState<DeptRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -857,6 +955,15 @@ export function SystemDeptsPage() {
     () => (typeof parentIdValue === 'number' && parentIdValue > 0 ? deptMap.get(parentIdValue) ?? null : null),
     [deptMap, parentIdValue],
   )
+  const exportColumns: ExportColumn<DeptRecord>[] = [
+    { title: '部门名称', dataIndex: 'name' },
+    { title: '上级部门', value: (record) => (record.parentId ? deptMap.get(record.parentId)?.name ?? '-' : '一级部门') },
+    { title: '负责人', value: (record) => record.leader || '-' },
+    { title: '联系电话', value: (record) => record.phone || '-' },
+    { title: '邮箱', value: (record) => record.email || '-' },
+    { title: '排序', value: (record) => record.orderNum },
+    { title: '状态', value: (record) => statusLabel(record.status) },
+  ]
 
   const openDrawer = (record?: DeptRecord, parentId?: number) => {
     setCurrent(record ?? null)
@@ -888,6 +995,24 @@ export function SystemDeptsPage() {
               }}
             >
               刷新
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={() =>
+                void exportWithLoader({
+                  columns: exportColumns,
+                  fileName: '部门管理',
+                  loadRecords: async () => {
+                    const response = await systemApi.depts({
+                      keyword: debouncedKeyword || undefined,
+                    })
+                    return response.data
+                  },
+                })
+              }
+            >
+              导出
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>
               新建一级部门
@@ -1039,6 +1164,16 @@ export function SystemPostsPage() {
           options: statusOptions,
         },
       ]}
+      exportConfig={{
+        fileName: '岗位管理',
+        columns: [
+          { title: '岗位名称', dataIndex: 'name' },
+          { title: '岗位编码', dataIndex: 'code' },
+          { title: '排序', dataIndex: 'orderNum' },
+          { title: '状态', value: (record: any) => statusLabel(record.status) },
+          { title: '备注', value: (record: any) => record.remark || '-' },
+        ],
+      }}
       columns={[
         { title: '岗位名称', dataIndex: 'name' },
         { title: '岗位编码', dataIndex: 'code' },
@@ -1082,6 +1217,7 @@ export function SystemDictsPage() {
   return (
     <Tabs
       activeKey={activeTab}
+      destroyOnHidden
       onChange={setActiveTab}
       items={[
         {
@@ -1112,6 +1248,15 @@ export function SystemDictsPage() {
                   options: statusOptions,
                 },
               ]}
+              exportConfig={{
+                fileName: '字典类型',
+                columns: [
+                  { title: '名称', dataIndex: 'name' },
+                  { title: '编码', dataIndex: 'typeCode' },
+                  { title: '状态', value: (record: any) => statusLabel(record.status) },
+                  { title: '备注', value: (record: any) => record.remark || '-' },
+                ],
+              }}
               columns={[
                 { title: '名称', dataIndex: 'name' },
                 { title: '编码', dataIndex: 'typeCode' },
@@ -1155,6 +1300,17 @@ export function SystemDictsPage() {
                   options: statusOptions,
                 },
               ]}
+              exportConfig={{
+                fileName: '字典数据',
+                columns: [
+                  { title: '字典类型', value: (record: any) => dictTypes.find((item) => item.id === record.typeId)?.name ?? `类型 ${record.typeId}` },
+                  { title: '标签', dataIndex: 'label' },
+                  { title: '值', dataIndex: 'value' },
+                  { title: 'Tag 类型', value: (record: any) => record.tagType || '-' },
+                  { title: '排序', dataIndex: 'orderNum' },
+                  { title: '状态', value: (record: any) => statusLabel(record.status) },
+                ],
+              }}
               columns={[
                 {
                   title: '类型',
@@ -1211,6 +1367,16 @@ export function SystemConfigsPage() {
           ],
         },
       ]}
+      exportConfig={{
+        fileName: '参数管理',
+        columns: [
+          { title: '参数名称', dataIndex: 'name' },
+          { title: '参数 Key', dataIndex: 'configKey' },
+          { title: '参数值', dataIndex: 'configValue' },
+          { title: '内置', value: (record: any) => (record.builtin === 1 ? '是' : '否') },
+          { title: '备注', value: (record: any) => record.remark || '-' },
+        ],
+      }}
       columns={[
         { title: '参数名称', dataIndex: 'name' },
         { title: '参数 Key', dataIndex: 'configKey' },
@@ -1254,6 +1420,15 @@ export function SystemNoticesPage() {
           options: statusOptions,
         },
       ]}
+      exportConfig={{
+        fileName: '通知公告',
+        columns: [
+          { title: '标题', dataIndex: 'title' },
+          { title: '类型', dataIndex: 'type' },
+          { title: '状态', value: (record: any) => statusLabel(record.status) },
+          { title: '内容', dataIndex: 'content' },
+        ],
+      }}
       columns={[
         { title: '标题', dataIndex: 'title' },
         { title: '类型', dataIndex: 'type', render: (value: string) => <Tag color="processing">{value}</Tag> },
