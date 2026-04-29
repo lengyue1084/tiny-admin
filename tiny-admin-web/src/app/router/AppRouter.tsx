@@ -10,8 +10,10 @@ function ProtectedRoute() {
   const location = useLocation()
 
   useEffect(() => {
-    void bootstrap()
-  }, [bootstrap])
+    if (!bootstrapped) {
+      void bootstrap()
+    }
+  }, [bootstrap, bootstrapped])
 
   if (!bootstrapped) {
     return <Spin fullscreen />

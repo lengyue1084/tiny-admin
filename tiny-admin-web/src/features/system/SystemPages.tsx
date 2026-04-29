@@ -576,15 +576,17 @@ export function SystemMenusPage() {
     setAllRows(response.data)
   }
 
-  const loadMenus = async () => {
+  const loadMenus = async (nextKeyword = debouncedKeyword, refreshAll = false) => {
     setLoading(true)
     try {
       const response = await systemApi.menus({
-        keyword: debouncedKeyword || undefined,
+        keyword: nextKeyword || undefined,
       })
       setRows(response.data)
-      if (!debouncedKeyword) {
+      if (!nextKeyword) {
         setAllRows(response.data)
+      } else if (refreshAll) {
+        await loadAllMenus()
       }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载菜单失败')
@@ -596,10 +598,6 @@ export function SystemMenusPage() {
   useEffect(() => {
     void loadMenus()
   }, [debouncedKeyword])
-
-  useEffect(() => {
-    void loadAllMenus()
-  }, [])
 
   const menuMap = useMemo(() => new Map(allRows.map((item) => [item.id, item])), [allRows])
   const treeRows = useMemo(() => buildTreeTable(rows), [rows])
@@ -640,7 +638,7 @@ export function SystemMenusPage() {
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
-                void Promise.all([loadMenus(), loadAllMenus()])
+                void loadMenus(debouncedKeyword, true)
               }}
             >
               刷新
@@ -707,7 +705,7 @@ export function SystemMenusPage() {
                     onConfirm={async () => {
                       await systemApi.deleteMenu(record.id)
                       message.success('菜单已删除')
-                      await Promise.all([loadMenus(), loadAllMenus()])
+                      await loadMenus(debouncedKeyword, true)
                     }}
                   >
                     <Button type="link" danger icon={<DeleteOutlined />}>
@@ -738,7 +736,7 @@ export function SystemMenusPage() {
                 await systemApi.saveMenu({ ...current, ...values })
                 message.success('菜单已保存')
                 setDrawerOpen(false)
-                await Promise.all([loadMenus(), loadAllMenus()])
+                await loadMenus(debouncedKeyword, true)
               }}
             >
               保存
@@ -828,15 +826,17 @@ export function SystemDeptsPage() {
     setAllRows(response.data)
   }
 
-  const loadDepts = async () => {
+  const loadDepts = async (nextKeyword = debouncedKeyword, refreshAll = false) => {
     setLoading(true)
     try {
       const response = await systemApi.depts({
-        keyword: debouncedKeyword || undefined,
+        keyword: nextKeyword || undefined,
       })
       setRows(response.data)
-      if (!debouncedKeyword) {
+      if (!nextKeyword) {
         setAllRows(response.data)
+      } else if (refreshAll) {
+        await loadAllDepts()
       }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载部门失败')
@@ -848,10 +848,6 @@ export function SystemDeptsPage() {
   useEffect(() => {
     void loadDepts()
   }, [debouncedKeyword])
-
-  useEffect(() => {
-    void loadAllDepts()
-  }, [])
 
   const deptMap = useMemo(() => new Map(allRows.map((item) => [item.id, item])), [allRows])
   const treeRows = useMemo(() => buildTreeTable(rows), [rows])
@@ -888,7 +884,7 @@ export function SystemDeptsPage() {
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
-                void Promise.all([loadDepts(), loadAllDepts()])
+                void loadDepts(debouncedKeyword, true)
               }}
             >
               刷新
@@ -942,7 +938,7 @@ export function SystemDeptsPage() {
                     onConfirm={async () => {
                       await systemApi.deleteDept(record.id)
                       message.success('部门已删除')
-                      await Promise.all([loadDepts(), loadAllDepts()])
+                      await loadDepts(debouncedKeyword, true)
                     }}
                   >
                     <Button type="link" danger icon={<DeleteOutlined />}>
@@ -973,7 +969,7 @@ export function SystemDeptsPage() {
                 await systemApi.saveDept({ ...current, ...values })
                 message.success('部门已保存')
                 setDrawerOpen(false)
-                await Promise.all([loadDepts(), loadAllDepts()])
+                await loadDepts(debouncedKeyword, true)
               }}
             >
               保存
@@ -1064,6 +1060,7 @@ export function SystemPostsPage() {
 
 export function SystemDictsPage() {
   const [dictTypes, setDictTypes] = useState<DictTypeRecord[]>([])
+  const [activeTab, setActiveTab] = useState('types')
 
   const refreshDictTypes = async () => {
     const response = await systemApi.dictTypes()
@@ -1071,11 +1068,21 @@ export function SystemDictsPage() {
   }
 
   useEffect(() => {
-    void refreshDictTypes()
-  }, [])
+    if (activeTab === 'data' && dictTypes.length === 0) {
+      void refreshDictTypes()
+    }
+  }, [activeTab, dictTypes.length])
+
+  const loadDictTypes = async (params?: Record<string, string | number | boolean | undefined>) => {
+    const response = await systemApi.dictTypes(params)
+    setDictTypes(response.data)
+    return response
+  }
 
   return (
     <Tabs
+      activeKey={activeTab}
+      onChange={setActiveTab}
       items={[
         {
           key: 'types',
@@ -1084,7 +1091,7 @@ export function SystemDictsPage() {
             <ResourcePage
               title="字典类型"
               description="统一维护字典分类，供状态标签、筛选项和表单下拉复用。"
-              load={systemApi.dictTypes}
+              load={loadDictTypes}
               save={async (payload) => {
                 const result = await systemApi.saveDictType(payload)
                 await refreshDictTypes()

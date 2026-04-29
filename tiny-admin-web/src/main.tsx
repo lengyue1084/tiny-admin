@@ -1,4 +1,3 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider, App as AntApp } from 'antd'
@@ -7,25 +6,23 @@ import App from './app/App'
 import './shared/styles/global.scss'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <ConfigProvider
-        locale={zhCN}
-        theme={{
-          token: {
-            colorPrimary: '#18B8C9',
-            borderRadius: 14,
-            colorBgLayout: '#EEF4F6',
-            colorText: '#172230',
-            colorTextSecondary: '#667586',
-            fontFamily: '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
-          },
-        }}
-      >
-        <AntApp>
-          <App />
-        </AntApp>
-      </ConfigProvider>
-    </BrowserRouter>
-  </React.StrictMode>,
+  <BrowserRouter>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#18B8C9',
+          borderRadius: 14,
+          colorBgLayout: '#EEF4F6',
+          colorText: '#172230',
+          colorTextSecondary: '#667586',
+          fontFamily: '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+        },
+      }}
+    >
+      <AntApp>
+        <App />
+      </AntApp>
+    </ConfigProvider>
+  </BrowserRouter>,
 )

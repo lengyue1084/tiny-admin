@@ -89,19 +89,14 @@ export function ResourcePage<T extends { id?: number | string }>({
 
   useEffect(() => {
     setFilterValues((currentValues) => {
-      let changed = false
-      const nextValues: Record<string, FilterValue | undefined> = {}
-      for (const filter of resolvedFilters) {
-        const nextValue = currentValues[filter.key]
-        nextValues[filter.key] = nextValue
-        if (!(filter.key in currentValues)) {
-          changed = true
-        }
+      const allowedKeys = new Set(resolvedFilters.map((filter) => filter.key))
+      const nextEntries = Object.entries(currentValues).filter(([key]) => allowedKeys.has(key))
+
+      if (nextEntries.length === Object.keys(currentValues).length) {
+        return currentValues
       }
-      if (Object.keys(currentValues).length !== resolvedFilters.length) {
-        changed = true
-      }
-      return changed ? nextValues : currentValues
+
+      return Object.fromEntries(nextEntries)
     })
   }, [filterQueryMeta, resolvedFilters])
 

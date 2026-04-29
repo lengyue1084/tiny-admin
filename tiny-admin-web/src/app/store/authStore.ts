@@ -23,9 +23,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const envelope = await authApi.login(payload)
       authStorage.setSession(envelope.data.accessToken, envelope.data.refreshToken, envelope.data.userInfo)
-      set({ user: envelope.data.userInfo })
       const menus = await systemApi.currentMenus()
-      set({ menus: menus.data })
+      set({ user: envelope.data.userInfo, menus: menus.data, bootstrapped: true })
     } finally {
       set({ loading: false })
     }
