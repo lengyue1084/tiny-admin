@@ -67,6 +67,7 @@ export function ResourcePage<T extends { id?: number | string }>({
   const [form] = Form.useForm()
   const editable = fields.length > 0
   const hasActions = editable || Boolean(remove)
+  const searchParamKey = search === false ? undefined : search?.paramKey ?? 'keyword'
 
   const resolvedFilters = useMemo(
     () =>
@@ -88,18 +89,26 @@ export function ResourcePage<T extends { id?: number | string }>({
 
   useEffect(() => {
     setFilterValues((currentValues) => {
+      let changed = false
       const nextValues: Record<string, FilterValue | undefined> = {}
       for (const filter of resolvedFilters) {
-        nextValues[filter.key] = currentValues[filter.key]
+        const nextValue = currentValues[filter.key]
+        nextValues[filter.key] = nextValue
+        if (!(filter.key in currentValues)) {
+          changed = true
+        }
       }
-      return nextValues
+      if (Object.keys(currentValues).length !== resolvedFilters.length) {
+        changed = true
+      }
+      return changed ? nextValues : currentValues
     })
-  }, [resolvedFilters])
+  }, [filterQueryMeta, resolvedFilters])
 
   const requestQuery = useMemo(() => {
     const query: ListQuery = {}
-    if (search !== false && debouncedKeyword) {
-      query[search?.paramKey ?? 'keyword'] = debouncedKeyword
+    if (debouncedKeyword && searchParamKey) {
+      query[searchParamKey] = debouncedKeyword
     }
     for (const filter of filters) {
       const value = filterValues[filter.key]
@@ -108,7 +117,7 @@ export function ResourcePage<T extends { id?: number | string }>({
       }
     }
     return query
-  }, [debouncedKeyword, filterValues, filters, search])
+  }, [debouncedKeyword, filterValues, filters, searchParamKey])
 
   const refresh = async (query: ListQuery = requestQuery) => {
     setLoading(true)
@@ -124,7 +133,7 @@ export function ResourcePage<T extends { id?: number | string }>({
 
   useEffect(() => {
     void refresh()
-  }, [debouncedKeyword, filterValues, filterQueryMeta, search !== false ? search?.paramKey : undefined])
+  }, [debouncedKeyword, filterValues, filterQueryMeta, searchParamKey])
 
   const mergedColumns = useMemo(() => {
     if (!hasActions) {
