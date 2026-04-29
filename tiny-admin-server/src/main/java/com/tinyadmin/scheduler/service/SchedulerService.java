@@ -22,6 +22,7 @@ import org.quartz.SchedulerException;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -38,12 +39,40 @@ public class SchedulerService {
                 .forEach(this::registerJobQuietly);
     }
 
-    public List<JobInfoEntity> jobs() {
-        return jobInfoMapper.selectList(new LambdaQueryWrapper<JobInfoEntity>().orderByDesc(JobInfoEntity::getId));
+    public List<JobInfoEntity> jobs(String keyword, Integer status) {
+        LambdaQueryWrapper<JobInfoEntity> query = new LambdaQueryWrapper<JobInfoEntity>()
+                .orderByDesc(JobInfoEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(JobInfoEntity::getName, keyword)
+                    .or()
+                    .like(JobInfoEntity::getJobGroup, keyword)
+                    .or()
+                    .like(JobInfoEntity::getTargetBean, keyword)
+                    .or()
+                    .like(JobInfoEntity::getTargetMethod, keyword)
+                    .or()
+                    .like(JobInfoEntity::getArgs, keyword));
+        }
+        if (status != null) {
+            query.eq(JobInfoEntity::getStatus, status);
+        }
+        return jobInfoMapper.selectList(query);
     }
 
-    public List<JobLogEntity> logs() {
-        return jobLogMapper.selectList(new LambdaQueryWrapper<JobLogEntity>().orderByDesc(JobLogEntity::getCreatedAt));
+    public List<JobLogEntity> logs(String keyword, Integer success) {
+        LambdaQueryWrapper<JobLogEntity> query = new LambdaQueryWrapper<JobLogEntity>()
+                .orderByDesc(JobLogEntity::getCreatedAt);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(JobLogEntity::getJobName, keyword)
+                    .or()
+                    .like(JobLogEntity::getMessage, keyword));
+        }
+        if (success != null) {
+            query.eq(JobLogEntity::getSuccess, success);
+        }
+        return jobLogMapper.selectList(query);
     }
 
     public JobInfoEntity save(JobInfoEntity entity) {

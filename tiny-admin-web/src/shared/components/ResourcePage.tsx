@@ -1,6 +1,7 @@
 import { PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
+import type { ListQuery } from '../api/services'
 
 type ResourceField =
   | { name: string; label: string; type?: 'text' | 'textarea'; required?: boolean }
@@ -9,12 +10,9 @@ type ResourceField =
 
 type FilterValue = string | number | boolean
 
-type ResourceSearchField<T> = keyof T | ((row: T) => unknown)
-
-type ResourceSearchConfig<T> = {
+type ResourceSearchConfig = {
   placeholder?: string
-  fields?: ResourceSearchField<T>[]
-  match?: (row: T, keyword: string) => boolean
+  paramKey?: string
 }
 
 type ResourceFilterOption = {
@@ -25,46 +23,24 @@ type ResourceFilterOption = {
 type ResourceFilterConfig<T> = {
   key: string
   placeholder: string
+  paramKey?: string
   width?: number
   allowClear?: boolean
   options: ResourceFilterOption[] | ((rows: T[]) => ResourceFilterOption[])
-  field?: keyof T | ((row: T) => unknown)
-  match?: (row: T, value: FilterValue) => boolean
 }
 
 type ResourcePageProps<T extends { id?: number | string }> = {
   title: string
   description: string
   columns: any[]
-  load: () => Promise<{ data: T[] }>
+  load: (query?: ListQuery) => Promise<{ data: T[] }>
   save: (payload: Partial<T>) => Promise<any>
   remove?: (id: number) => Promise<any>
   fields?: ResourceField[]
   defaultValues?: Partial<T>
   modalWidth?: number
-  search?: false | ResourceSearchConfig<T>
+  search?: false | ResourceSearchConfig
   filters?: ResourceFilterConfig<T>[]
-}
-
-function resolveFieldValue<T>(row: T, field?: keyof T | ((item: T) => unknown)) {
-  if (!field) {
-    return undefined
-  }
-
-  return typeof field === 'function' ? field(row) : row[field]
-}
-
-function includesKeyword<T>(row: T, keyword: string, fields?: ResourceSearchField<T>[]) {
-  const query = keyword.trim().toLowerCase()
-  if (!query) {
-    return true
-  }
-
-  const values = fields?.length
-    ? fields.map((field) => resolveFieldValue(row, field))
-    : Object.values(row as Record<string, unknown>)
-
-  return values.some((value) => String(value ?? '').toLowerCase().includes(query))
 }
 
 export function ResourcePage<T extends { id?: number | string }>({
@@ -85,6 +61,7 @@ export function ResourcePage<T extends { id?: number | string }>({
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
+  const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [current, setCurrent] = useState<Partial<T> | null>(null)
   const [filterValues, setFilterValues] = useState<Record<string, FilterValue | undefined>>({})
   const [form] = Form.useForm()
@@ -99,22 +76,15 @@ export function ResourcePage<T extends { id?: number | string }>({
       })),
     [filters, rows],
   )
-
-  const refresh = async () => {
-    setLoading(true)
-    try {
-      const result = await load()
-      setRows(result.data)
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const filterQueryMeta = useMemo(
+    () => filters.map((filter) => `${filter.key}:${filter.paramKey ?? filter.key}`).join('|'),
+    [filters],
+  )
 
   useEffect(() => {
-    void refresh()
-  }, [])
+    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [keyword])
 
   useEffect(() => {
     setFilterValues((currentValues) => {
@@ -126,34 +96,35 @@ export function ResourcePage<T extends { id?: number | string }>({
     })
   }, [resolvedFilters])
 
-  const filteredRows = useMemo(() => {
-    return rows.filter((row) => {
-      const matchesKeyword =
-        search === false
-          ? true
-          : search?.match
-            ? search.match(row, keyword.trim())
-            : includesKeyword(row, keyword, search?.fields)
-
-      if (!matchesKeyword) {
-        return false
+  const requestQuery = useMemo(() => {
+    const query: ListQuery = {}
+    if (search !== false && debouncedKeyword) {
+      query[search?.paramKey ?? 'keyword'] = debouncedKeyword
+    }
+    for (const filter of filters) {
+      const value = filterValues[filter.key]
+      if (value !== undefined) {
+        query[filter.paramKey ?? filter.key] = value
       }
+    }
+    return query
+  }, [debouncedKeyword, filterValues, filters, search])
 
-      return resolvedFilters.every((filter) => {
-        const filterValue = filterValues[filter.key]
-        if (filterValue === undefined) {
-          return true
-        }
+  const refresh = async (query: ListQuery = requestQuery) => {
+    setLoading(true)
+    try {
+      const result = await load(query)
+      setRows(result.data)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-        if (filter.match) {
-          return filter.match(row, filterValue)
-        }
-
-        const fieldValue = resolveFieldValue(row, filter.field ?? (filter.key as keyof T))
-        return String(fieldValue ?? '') === String(filterValue)
-      })
-    })
-  }, [filterValues, keyword, resolvedFilters, rows, search])
+  useEffect(() => {
+    void refresh()
+  }, [debouncedKeyword, filterValues, filterQueryMeta, search !== false ? search?.paramKey : undefined])
 
   const mergedColumns = useMemo(() => {
     if (!hasActions) {
@@ -215,10 +186,6 @@ export function ResourcePage<T extends { id?: number | string }>({
               <span>当前记录</span>
               <strong>{rows.length}</strong>
             </div>
-            <div className="metric-chip">
-              <span>筛选结果</span>
-              <strong>{filteredRows.length}</strong>
-            </div>
           </div>
         </div>
 
@@ -251,7 +218,7 @@ export function ResourcePage<T extends { id?: number | string }>({
                 style={{ width: filter.width ?? 160 }}
               />
             ))}
-            <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
+            <Button icon={<ReloadOutlined />} onClick={() => void refresh(requestQuery)}>
               刷新
             </Button>
             {editable ? (
@@ -274,7 +241,7 @@ export function ResourcePage<T extends { id?: number | string }>({
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={filteredRows}
+          dataSource={rows}
           columns={mergedColumns}
           pagination={{ pageSize: 8, showSizeChanger: false }}
           className="workspace-table"

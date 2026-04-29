@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -45,16 +46,54 @@ public class AuditService {
         onlineUserMapper.updateById(entity);
     }
 
-    public List<OperLogEntity> listOperLogs() {
-        return operLogMapper.selectList(new LambdaQueryWrapper<OperLogEntity>().orderByDesc(OperLogEntity::getCreatedAt));
+    public List<OperLogEntity> listOperLogs(String keyword, Integer success) {
+        LambdaQueryWrapper<OperLogEntity> query = new LambdaQueryWrapper<OperLogEntity>()
+                .orderByDesc(OperLogEntity::getCreatedAt);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(OperLogEntity::getModule, keyword)
+                    .or()
+                    .like(OperLogEntity::getAction, keyword)
+                    .or()
+                    .like(OperLogEntity::getOperatorName, keyword)
+                    .or()
+                    .like(OperLogEntity::getRequestUri, keyword));
+        }
+        if (success != null) {
+            query.eq(OperLogEntity::getSuccess, success);
+        }
+        return operLogMapper.selectList(query);
     }
 
-    public List<LoginLogEntity> listLoginLogs() {
-        return loginLogMapper.selectList(new LambdaQueryWrapper<LoginLogEntity>().orderByDesc(LoginLogEntity::getCreatedAt));
+    public List<LoginLogEntity> listLoginLogs(String keyword, String status) {
+        LambdaQueryWrapper<LoginLogEntity> query = new LambdaQueryWrapper<LoginLogEntity>()
+                .orderByDesc(LoginLogEntity::getCreatedAt);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(LoginLogEntity::getUsername, keyword)
+                    .or()
+                    .like(LoginLogEntity::getIp, keyword)
+                    .or()
+                    .like(LoginLogEntity::getMessage, keyword));
+        }
+        if (StringUtils.hasText(status)) {
+            query.eq(LoginLogEntity::getStatus, status);
+        }
+        return loginLogMapper.selectList(query);
     }
 
-    public List<OnlineUserEntity> listOnlineUsers() {
-        return onlineUserMapper.selectList(new LambdaQueryWrapper<OnlineUserEntity>().orderByDesc(OnlineUserEntity::getLastActiveTime));
+    public List<OnlineUserEntity> listOnlineUsers(String keyword) {
+        LambdaQueryWrapper<OnlineUserEntity> query = new LambdaQueryWrapper<OnlineUserEntity>()
+                .orderByDesc(OnlineUserEntity::getLastActiveTime);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(OnlineUserEntity::getUsername, keyword)
+                    .or()
+                    .like(OnlineUserEntity::getIp, keyword)
+                    .or()
+                    .like(OnlineUserEntity::getSessionId, keyword));
+        }
+        return onlineUserMapper.selectList(query);
     }
 
     public void removeOnlineUser(String sessionId) {

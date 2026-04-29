@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,14 +22,20 @@ public class SchedulerController {
     private final SchedulerService schedulerService;
 
     @GetMapping("/jobs")
-    public ApiResponse<?> jobs() {
-        var rows = schedulerService.jobs();
+    public ApiResponse<?> jobs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status
+    ) {
+        var rows = schedulerService.jobs(keyword, status);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
     @GetMapping("/job-logs")
-    public ApiResponse<?> logs() {
-        var rows = schedulerService.logs();
+    public ApiResponse<?> logs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer success
+    ) {
+        var rows = schedulerService.logs(keyword, success);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 

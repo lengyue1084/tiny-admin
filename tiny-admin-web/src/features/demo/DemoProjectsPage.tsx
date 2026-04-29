@@ -1,5 +1,5 @@
-import { ResourcePage, statusTag } from '../../shared/components/ResourcePage'
 import { demoApi } from '../../shared/api/services'
+import { ResourcePage, statusTag } from '../../shared/components/ResourcePage'
 
 const projectStatusOptions = [
   { label: '规划中', value: '规划中' },
@@ -17,7 +17,6 @@ export function DemoProjectsPage() {
       remove={demoApi.deleteProject}
       search={{
         placeholder: '搜索项目名称、负责人或描述',
-        fields: ['name', 'owner', 'description'],
       }}
       filters={[
         {

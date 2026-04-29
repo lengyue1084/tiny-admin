@@ -1,7 +1,18 @@
 import { App, Button, Card, Input, Select, Space, Table, Tag, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ResourcePage } from '../../shared/components/ResourcePage'
 import { schedulerApi } from '../../shared/api/services'
+
+function useDebouncedValue(value: string, delay = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value.trim()), delay)
+    return () => window.clearTimeout(timer)
+  }, [delay, value])
+
+  return debouncedValue
+}
 
 export function SchedulerJobsPage() {
   const { message } = App.useApp()
@@ -11,13 +22,12 @@ export function SchedulerJobsPage() {
     <ResourcePage
       key={refreshKey}
       title="定时任务"
-      description="支持新增、启停和手动执行后台任务，避免通过服务端重启或整页刷新来维护作业。"
+      description="支持新增、启停和手动执行后台任务，避免通过服务重启或整页刷新来维护作业。"
       load={schedulerApi.jobs}
       save={schedulerApi.saveJob}
       remove={schedulerApi.deleteJob}
       search={{
         placeholder: '搜索任务名称、分组、Bean 或方法',
-        fields: ['name', 'jobGroup', 'targetBean', 'targetMethod', 'args'],
       }}
       filters={[
         {
@@ -78,7 +88,16 @@ export function SchedulerJobsPage() {
         { name: 'targetBean', label: 'Bean 名称', required: true },
         { name: 'targetMethod', label: '方法名', required: true },
         { name: 'args', label: '参数' },
-        { name: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }], required: true },
+        {
+          name: 'status',
+          label: '状态',
+          type: 'select',
+          options: [
+            { label: '启用', value: 1 },
+            { label: '停用', value: 0 },
+          ],
+          required: true,
+        },
       ]}
       defaultValues={{ jobGroup: 'system', status: 1 }}
     />
@@ -86,25 +105,31 @@ export function SchedulerJobsPage() {
 }
 
 export function SchedulerLogsPage() {
+  const { message } = App.useApp()
   const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [success, setSuccess] = useState<number | undefined>()
+  const debouncedKeyword = useDebouncedValue(keyword)
+
+  const loadLogs = async () => {
+    setLoading(true)
+    try {
+      const result = await schedulerApi.logs({
+        keyword: debouncedKeyword || undefined,
+        success,
+      })
+      setRows(result.data)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '加载任务日志失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    void schedulerApi.logs().then((result) => setRows(result.data))
-  }, [])
-
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const query = keyword.trim().toLowerCase()
-        const matchesKeyword =
-          !query || [row.jobName, row.message, row.createdAt].some((value) => String(value ?? '').toLowerCase().includes(query))
-        const matchesSuccess = success === undefined || row.success === success
-        return matchesKeyword && matchesSuccess
-      }),
-    [keyword, rows, success],
-  )
+    void loadLogs()
+  }, [debouncedKeyword, success])
 
   return (
     <Card className="workspace-card">
@@ -116,12 +141,8 @@ export function SchedulerLogsPage() {
         </div>
         <div className="workspace-card__heroMeta">
           <div className="metric-chip">
-            <span>日志总数</span>
-            <strong>{rows.length}</strong>
-          </div>
-          <div className="metric-chip">
             <span>当前结果</span>
-            <strong>{filteredRows.length}</strong>
+            <strong>{rows.length}</strong>
           </div>
         </div>
       </div>
@@ -130,7 +151,7 @@ export function SchedulerLogsPage() {
         <Input
           allowClear
           name="scheduler-log-search"
-          placeholder="搜索任务名称、执行消息或时间"
+          placeholder="搜索任务名称或执行消息"
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           className="workspace-search"
@@ -147,15 +168,22 @@ export function SchedulerLogsPage() {
             ]}
             style={{ width: 140 }}
           />
+          <Button onClick={() => void loadLogs()}>刷新</Button>
         </Space>
       </div>
 
       <Table
         rowKey="id"
-        dataSource={filteredRows}
+        loading={loading}
+        dataSource={rows}
         columns={[
           { title: '任务名称', dataIndex: 'jobName', width: 200 },
-          { title: '执行结果', dataIndex: 'success', width: 120, render: (value: number) => <Tag color={value === 1 ? 'success' : 'error'}>{value === 1 ? '成功' : '失败'}</Tag> },
+          {
+            title: '执行结果',
+            dataIndex: 'success',
+            width: 120,
+            render: (value: number) => <Tag color={value === 1 ? 'success' : 'error'}>{value === 1 ? '成功' : '失败'}</Tag>,
+          },
           { title: '消息', dataIndex: 'message', ellipsis: true },
           { title: '时间', dataIndex: 'createdAt', width: 200 },
         ]}

@@ -71,6 +71,12 @@ tiny-admin/
 
 ## Quick Start
 
+### Prerequisites
+
+- JDK 17 or newer for local backend development
+- Node.js 20 or newer for local frontend development
+- Docker and Docker Compose for containerized startup
+
 ### Default Account
 
 - Username: `admin`
@@ -86,9 +92,10 @@ docker compose up --build
 After startup:
 
 - Web: [http://localhost](http://localhost)
-- Frontend dev server: [http://localhost:5173](http://localhost:5173)
 - Backend API: [http://localhost:8080](http://localhost:8080)
 - Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+
+The `5173` port is only used when you run the frontend locally with `npm run dev`.
 
 ### Included Services
 
@@ -110,6 +117,8 @@ npm run dev
 The frontend development server proxies API requests to `http://localhost:8080`.
 
 ### Backend
+
+Local backend development requires Java 17 or newer.
 
 ```bash
 cd tiny-admin-server

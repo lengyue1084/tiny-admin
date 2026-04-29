@@ -33,7 +33,7 @@ public class MonitorService {
                 "free", root.getFreeSpace(),
                 "usable", root.getUsableSpace()
         ));
-        result.put("onlineUsers", auditService.listOnlineUsers().size());
+        result.put("onlineUsers", auditService.listOnlineUsers(null).size());
         return result;
     }
 
@@ -48,7 +48,7 @@ public class MonitorService {
         }
         return Map.of(
                 "sessionKeys", sessionStore.keys("tiny-admin:session:").size(),
-                "onlineUsers", auditService.listOnlineUsers().size(),
+                "onlineUsers", auditService.listOnlineUsers(null).size(),
                 "redisDbSize", dbSize,
                 "redisVersion", redisVersion
         );

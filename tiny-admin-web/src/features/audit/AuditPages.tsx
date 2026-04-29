@@ -1,6 +1,6 @@
 import { Tag } from 'antd'
-import { ResourcePage } from '../../shared/components/ResourcePage'
 import { auditApi } from '../../shared/api/services'
+import { ResourcePage } from '../../shared/components/ResourcePage'
 
 function loginStatusLabel(value: string) {
   if (value === 'SUCCESS') {
@@ -20,8 +20,7 @@ export function AuditOperLogsPage() {
       load={auditApi.operLogs}
       save={async () => Promise.resolve({})}
       search={{
-        placeholder: '搜索模块、动作、操作者或请求路径',
-        fields: ['module', 'action', 'operatorName', 'requestUri'],
+        placeholder: '搜索模块、动作、操作人或请求路径',
       }}
       filters={[
         {
@@ -37,7 +36,7 @@ export function AuditOperLogsPage() {
       columns={[
         { title: '模块', dataIndex: 'module', width: 140 },
         { title: '动作', dataIndex: 'action', width: 160 },
-        { title: '操作者', dataIndex: 'operatorName', width: 140 },
+        { title: '操作人', dataIndex: 'operatorName', width: 140 },
         { title: '请求路径', dataIndex: 'requestUri', ellipsis: true },
         {
           title: '执行结果',
@@ -56,21 +55,21 @@ export function AuditLoginLogsPage() {
   return (
     <ResourcePage
       title="登录日志"
-      description="审查登录成功、失败和认证异常，快速确认账号安全状况。"
+      description="审查登录成功、失败和认证异常，快速确认账号安全状态。"
       load={auditApi.loginLogs}
       save={async () => Promise.resolve({})}
       search={{
         placeholder: '搜索用户名、IP 或失败原因',
-        fields: ['username', 'ip', 'message'],
       }}
       filters={[
         {
           key: 'status',
           placeholder: '登录结果',
           width: 140,
-          options: (rows) =>
-            [...new Set(rows.map((item) => String(item.status ?? '')).filter(Boolean))]
-              .map((value) => ({ label: loginStatusLabel(value), value })),
+          options: [
+            { label: '成功', value: 'SUCCESS' },
+            { label: '失败', value: 'FAIL' },
+          ],
         },
       ]}
       columns={[

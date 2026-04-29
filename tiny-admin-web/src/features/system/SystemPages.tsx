@@ -59,6 +59,17 @@ import {
   yesNoOptions,
 } from './systemHelpers'
 
+function useDebouncedValue(value: string, delay = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value.trim()), delay)
+    return () => window.clearTimeout(timer)
+  }, [delay, value])
+
+  return debouncedValue
+}
+
 function useSystemMeta() {
   const { message } = App.useApp()
   const [meta, setMeta] = useState<SystemMeta | null>(null)
@@ -117,15 +128,15 @@ function WorkspaceHeader({
 
 function parentMenuHelperText(menuType?: string, parentName?: string | null) {
   if (!menuType) {
-    return '先选菜单类型，再决定放到哪个层级。'
+    return '先选择菜单类型，再决定放到哪个层级。'
   }
   if (!parentName) {
-    return menuType === 'CATALOG' ? '当前会作为一级模块显示在侧边栏。' : '当前会放在最外层，请确认是否符合导航层级。'
+    return menuType === 'CATALOG' ? '当前会作为一级模块显示在导航中。' : '当前会放在最外层，请确认是否符合导航层级。'
   }
   if (menuType === 'BUTTON') {
-    return `当前会挂到「${parentName}」下，作为按钮权限点管理。`
+    return `当前会挂在“${parentName}”下，作为按钮权限点管理。`
   }
-  return `当前会挂到「${parentName}」下，成为可访问页面或目录。`
+  return `当前会挂在“${parentName}”下，成为可访问页面或目录。`
 }
 
 export function SystemUsersPage() {
@@ -139,11 +150,16 @@ export function SystemUsersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [current, setCurrent] = useState<UserRecord | null>(null)
   const [form] = Form.useForm()
+  const debouncedKeyword = useDebouncedValue(keyword)
 
   const loadUsers = async () => {
     setLoading(true)
     try {
-      const response = await systemApi.users()
+      const response = await systemApi.users({
+        keyword: debouncedKeyword || undefined,
+        status,
+        deptId,
+      })
       setRows(response.data)
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载用户失败')
@@ -154,28 +170,18 @@ export function SystemUsersPage() {
 
   useEffect(() => {
     void loadUsers()
-  }, [])
+  }, [debouncedKeyword, status, deptId])
 
   const roleMap = useMemo(() => new Map(meta?.roleOptions.map((item) => [item.value, item.label]) ?? []), [meta?.roleOptions])
-  const deptFilterIds = useMemo(() => collectSelfAndDescendantIds(meta?.deptOptions ?? [], deptId), [deptId, meta?.deptOptions])
-
-  const filteredRows = useMemo(() => {
-    return rows.filter((row) => {
-      const matchesKeyword =
-        !keyword ||
-        [row.username, row.nickName, row.email, row.phone, row.deptName, row.postName]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(keyword.toLowerCase()))
-      const matchesStatus = status === undefined || row.status === status
-      const matchesDept = deptId === undefined || deptFilterIds.has(row.deptId ?? -1)
-      return matchesKeyword && matchesStatus && matchesDept
-    })
-  }, [deptFilterIds, deptId, keyword, rows, status])
 
   const handleCreate = () => {
     setCurrent(null)
     form.resetFields()
-    form.setFieldsValue({ status: 1, dataScope: 'ALL', roleIds: meta?.roleOptions?.[0] ? [meta.roleOptions[0].value] : [] })
+    form.setFieldsValue({
+      status: 1,
+      dataScope: 'ALL',
+      roleIds: meta?.roleOptions?.[0] ? [meta.roleOptions[0].value] : [],
+    })
     setDrawerOpen(true)
   }
 
@@ -255,12 +261,12 @@ export function SystemUsersPage() {
   ]
 
   return (
-    <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <WorkspaceHeader
         title="用户管理"
         description="把账号、组织归属、角色授权和数据范围放在同一个工作区里完成，避免来回切页。"
         metrics={[
-          { label: '用户总数', value: rows.length, icon: <UserOutlined /> },
+          { label: '当前结果', value: rows.length, icon: <UserOutlined /> },
           { label: '启用账号', value: rows.filter((item) => item.status === 1).length, icon: <UserOutlined /> },
           { label: '部门覆盖', value: new Set(rows.map((item) => item.deptId).filter(Boolean)).size, icon: <ApartmentOutlined /> },
         ]}
@@ -278,7 +284,14 @@ export function SystemUsersPage() {
 
       <Card className="workspace-card">
         <div className="workspace-toolbar workspace-toolbar--stack">
-          <Input name="user-search" placeholder="搜索账号、姓名、部门或邮箱" value={keyword} onChange={(event) => setKeyword(event.target.value)} className="workspace-search" />
+          <Input
+            allowClear
+            name="user-search"
+            placeholder="搜索账号、姓名、部门、岗位、邮箱或手机号"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            className="workspace-search"
+          />
           <Space wrap>
             <Select allowClear placeholder="状态" options={statusOptions} value={status} onChange={setStatus} style={{ width: 140 }} />
             <TreeSelect
@@ -296,7 +309,7 @@ export function SystemUsersPage() {
         <Table
           rowKey="id"
           loading={loading || metaLoading}
-          dataSource={filteredRows}
+          dataSource={rows}
           columns={columns}
           pagination={{ pageSize: 8, showSizeChanger: false }}
           className="workspace-table"
@@ -307,9 +320,9 @@ export function SystemUsersPage() {
         title={current ? `编辑用户 · ${current.nickName}` : '新建用户'}
         open={drawerOpen}
         size={560}
-        destroyOnHidden
+        destroyOnClose
         onClose={() => setDrawerOpen(false)}
-        extra={
+        footer={
           <Space>
             <Button onClick={() => setDrawerOpen(false)}>取消</Button>
             <Button
@@ -319,7 +332,7 @@ export function SystemUsersPage() {
                 await systemApi.saveUser({ ...current, ...values })
                 message.success('用户已保存')
                 setDrawerOpen(false)
-                await loadUsers()
+                await Promise.all([loadUsers(), refreshMeta()])
               }}
             >
               保存
@@ -335,7 +348,7 @@ export function SystemUsersPage() {
             <Input />
           </Form.Item>
           <Form.Item label={current ? '重置密码' : '登录密码'} name="password">
-            <Input.Password placeholder={current ? '不填写则保持原密码' : '默认可填写为 admin123'} />
+            <Input.Password placeholder={current ? '留空则保持原密码' : '留空则使用默认密码 admin123'} />
           </Form.Item>
           <Form.Item label="邮箱" name="email">
             <Input />
@@ -376,11 +389,16 @@ export function SystemRolesPage() {
   const [current, setCurrent] = useState<RoleRecord | null>(null)
   const [checkedMenuIds, setCheckedMenuIds] = useState<Array<number | string>>([])
   const [form] = Form.useForm()
+  const debouncedKeyword = useDebouncedValue(keyword)
 
   const loadRoles = async () => {
     setLoading(true)
     try {
-      const response = await systemApi.roles()
+      const response = await systemApi.roles({
+        keyword: debouncedKeyword || undefined,
+        status: roleStatus,
+        dataScope: roleDataScope,
+      })
       setRows(response.data)
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载角色失败')
@@ -391,20 +409,9 @@ export function SystemRolesPage() {
 
   useEffect(() => {
     void loadRoles()
-  }, [])
+  }, [debouncedKeyword, roleDataScope, roleStatus])
 
   const menuCount = meta?.menuOptions?.filter((item) => item.type !== 'BUTTON').length ?? 0
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((item) => {
-        const matchesKeyword =
-          !keyword || [item.name, item.code, item.remark].some((value) => String(value ?? '').toLowerCase().includes(keyword.toLowerCase()))
-        const matchesStatus = roleStatus === undefined || item.status === roleStatus
-        const matchesDataScope = roleDataScope === undefined || item.dataScope === roleDataScope
-        return matchesKeyword && matchesStatus && matchesDataScope
-      }),
-    [keyword, roleDataScope, roleStatus, rows],
-  )
 
   const openDrawer = (record?: RoleRecord) => {
     setCurrent(record ?? null)
@@ -419,13 +426,21 @@ export function SystemRolesPage() {
     setDrawerOpen(true)
   }
 
+  const submitRole = async (values?: Record<string, unknown>) => {
+    const formValues = values ?? (await form.validateFields())
+    await systemApi.saveRole({ ...current, ...formValues, menuIds: checkedMenuIds.map((item) => Number(item)) })
+    message.success('角色已保存')
+    setDrawerOpen(false)
+    await Promise.all([loadRoles(), refreshMeta()])
+  }
+
   return (
-    <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <WorkspaceHeader
         title="角色管理"
         description="角色页直接处理数据范围和菜单授权，保存后即可反馈到导航和按钮权限。"
         metrics={[
-          { label: '角色数量', value: rows.length, icon: <TeamOutlined /> },
+          { label: '当前结果', value: rows.length, icon: <TeamOutlined /> },
           { label: '启用角色', value: rows.filter((item) => item.status === 1).length, icon: <TeamOutlined /> },
           { label: '可授权菜单', value: menuCount, icon: <BookOutlined /> },
         ]}
@@ -443,7 +458,14 @@ export function SystemRolesPage() {
 
       <Card className="workspace-card">
         <div className="workspace-toolbar workspace-toolbar--stack">
-          <Input name="role-search" placeholder="搜索角色名称、编码或备注" value={keyword} onChange={(event) => setKeyword(event.target.value)} className="workspace-search" />
+          <Input
+            allowClear
+            name="role-search"
+            placeholder="搜索角色名称、编码或备注"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            className="workspace-search"
+          />
           <Space wrap>
             <Select allowClear placeholder="数据范围" options={dataScopeOptions} value={roleDataScope} onChange={setRoleDataScope} style={{ width: 180 }} />
             <Select allowClear placeholder="状态" options={statusOptions} value={roleStatus} onChange={setRoleStatus} style={{ width: 140 }} />
@@ -452,7 +474,7 @@ export function SystemRolesPage() {
         <Table
           rowKey="id"
           loading={loading || metaLoading}
-          dataSource={filteredRows}
+          dataSource={rows}
           columns={[
             { title: '角色名称', dataIndex: 'name' },
             { title: '角色编码', dataIndex: 'code' },
@@ -474,7 +496,7 @@ export function SystemRolesPage() {
                     onConfirm={async () => {
                       await systemApi.deleteRole(record.id)
                       message.success('角色已删除')
-                      await loadRoles()
+                      await Promise.all([loadRoles(), refreshMeta()])
                     }}
                   >
                     <Button type="link" danger icon={<DeleteOutlined />}>
@@ -494,27 +516,18 @@ export function SystemRolesPage() {
         title={current ? `编辑角色 · ${current.name}` : '新建角色'}
         open={drawerOpen}
         size={720}
-        destroyOnHidden
+        destroyOnClose
         onClose={() => setDrawerOpen(false)}
-        extra={
+        footer={
           <Space>
             <Button onClick={() => setDrawerOpen(false)}>取消</Button>
-            <Button
-              type="primary"
-              onClick={async () => {
-                const values = await form.validateFields()
-                await systemApi.saveRole({ ...current, ...values, menuIds: checkedMenuIds.map((item) => Number(item)) })
-                message.success('角色已保存')
-                setDrawerOpen(false)
-                await loadRoles()
-              }}
-            >
+            <Button type="primary" htmlType="submit" onClick={() => void submitRole()}>
               保存
             </Button>
           </Space>
         }
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" onFinish={(values) => void submitRole(values as Record<string, unknown>)}>
           <Form.Item label="角色名称" name="name" rules={[{ required: true, message: '请输入角色名称' }]}>
             <Input />
           </Form.Item>
@@ -550,17 +563,29 @@ export function SystemRolesPage() {
 export function SystemMenusPage() {
   const { message } = App.useApp()
   const [rows, setRows] = useState<MenuRecord[]>([])
+  const [allRows, setAllRows] = useState<MenuRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [current, setCurrent] = useState<MenuRecord | null>(null)
   const [form] = Form.useForm()
+  const debouncedKeyword = useDebouncedValue(keyword)
+
+  const loadAllMenus = async () => {
+    const response = await systemApi.menus()
+    setAllRows(response.data)
+  }
 
   const loadMenus = async () => {
     setLoading(true)
     try {
-      const response = await systemApi.menus()
+      const response = await systemApi.menus({
+        keyword: debouncedKeyword || undefined,
+      })
       setRows(response.data)
+      if (!debouncedKeyword) {
+        setAllRows(response.data)
+      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载菜单失败')
     } finally {
@@ -570,31 +595,22 @@ export function SystemMenusPage() {
 
   useEffect(() => {
     void loadMenus()
+  }, [debouncedKeyword])
+
+  useEffect(() => {
+    void loadAllMenus()
   }, [])
 
-  const menuMap = useMemo(() => new Map(rows.map((item) => [item.id, item])), [rows])
+  const menuMap = useMemo(() => new Map(allRows.map((item) => [item.id, item])), [allRows])
   const treeRows = useMemo(() => buildTreeTable(rows), [rows])
-  const currentBranchIds = useMemo(() => collectSelfAndDescendantIds(rows, current?.id), [current?.id, rows])
-  const parentDisabledIds = useMemo(() => new Set(rows.filter((item) => item.type === 'BUTTON').map((item) => item.id)), [rows])
+  const currentBranchIds = useMemo(() => collectSelfAndDescendantIds(allRows, current?.id), [allRows, current?.id])
+  const parentDisabledIds = useMemo(() => new Set(allRows.filter((item) => item.type === 'BUTTON').map((item) => item.id)), [allRows])
   const parentIdValue = Form.useWatch('parentId', form)
   const menuTypeValue = Form.useWatch('type', form)
   const parentMenu = useMemo(
     () => (typeof parentIdValue === 'number' && parentIdValue > 0 ? menuMap.get(parentIdValue) ?? null : null),
     [menuMap, parentIdValue],
   )
-
-  const filteredTree = useMemo(() => {
-    if (!keyword) {
-      return treeRows
-    }
-    const query = keyword.toLowerCase()
-    const includesQuery = (item: MenuRecord & { children?: MenuRecord[] }): boolean => {
-      const selfMatch = [item.name, item.path, item.permissionCode].some((value) => String(value ?? '').toLowerCase().includes(query))
-      const childMatch = item.children?.some((child) => includesQuery(child as MenuRecord & { children?: MenuRecord[] })) ?? false
-      return selfMatch || childMatch
-    }
-    return treeRows.filter((item) => includesQuery(item as MenuRecord & { children?: MenuRecord[] }))
-  }, [keyword, treeRows])
 
   const openDrawer = (record?: MenuRecord, parentId?: number) => {
     setCurrent(record ?? null)
@@ -610,18 +626,23 @@ export function SystemMenusPage() {
   }
 
   return (
-    <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <WorkspaceHeader
         title="菜单管理"
         description="一级模块、二级页面和按钮权限统一在这里维护，支持直接添加子节点，避免手动记上级 ID。"
         metrics={[
-          { label: '菜单总数', value: rows.length, icon: <BookOutlined /> },
-          { label: '目录节点', value: rows.filter((item) => item.type === 'CATALOG').length, icon: <BookOutlined /> },
-          { label: '按钮权限', value: rows.filter((item) => item.type === 'BUTTON').length, icon: <ControlOutlined /> },
+          { label: '菜单总数', value: allRows.length, icon: <BookOutlined /> },
+          { label: '目录节点', value: allRows.filter((item) => item.type === 'CATALOG').length, icon: <BookOutlined /> },
+          { label: '按钮权限', value: allRows.filter((item) => item.type === 'BUTTON').length, icon: <ControlOutlined /> },
         ]}
         extra={
           <>
-            <Button icon={<ReloadOutlined />} onClick={() => void loadMenus()}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                void Promise.all([loadMenus(), loadAllMenus()])
+              }}
+            >
               刷新
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>
@@ -633,12 +654,19 @@ export function SystemMenusPage() {
 
       <Card className="workspace-card">
         <div className="workspace-toolbar">
-          <Input name="menu-search" placeholder="搜索菜单名称、路由或权限标识" value={keyword} onChange={(event) => setKeyword(event.target.value)} className="workspace-search" />
+          <Input
+            allowClear
+            name="menu-search"
+            placeholder="搜索菜单名称、路由、组件或权限标识"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            className="workspace-search"
+          />
         </div>
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={filteredTree}
+          dataSource={treeRows}
           pagination={false}
           columns={[
             {
@@ -679,7 +707,7 @@ export function SystemMenusPage() {
                     onConfirm={async () => {
                       await systemApi.deleteMenu(record.id)
                       message.success('菜单已删除')
-                      await loadMenus()
+                      await Promise.all([loadMenus(), loadAllMenus()])
                     }}
                   >
                     <Button type="link" danger icon={<DeleteOutlined />}>
@@ -698,9 +726,9 @@ export function SystemMenusPage() {
         title={current ? `编辑菜单 · ${current.name}` : '新建菜单'}
         open={drawerOpen}
         size={620}
-        destroyOnHidden
+        destroyOnClose
         onClose={() => setDrawerOpen(false)}
-        extra={
+        footer={
           <Space>
             <Button onClick={() => setDrawerOpen(false)}>取消</Button>
             <Button
@@ -710,7 +738,7 @@ export function SystemMenusPage() {
                 await systemApi.saveMenu({ ...current, ...values })
                 message.success('菜单已保存')
                 setDrawerOpen(false)
-                await loadMenus()
+                await Promise.all([loadMenus(), loadAllMenus()])
               }}
             >
               保存
@@ -718,18 +746,18 @@ export function SystemMenusPage() {
           </Space>
         }
       >
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             type="info"
             showIcon
-            message={current ? '正在调整已有菜单结构' : '建议先确定层级，再补路由与权限'}
+            message={current ? '正在调整已有菜单结构' : '建议先确定层级，再补充路由与权限'}
             description={parentMenuHelperText(menuTypeValue, parentMenu?.name ?? null)}
           />
 
           <Form form={form} layout="vertical">
             <Form.Item label="上级节点" name="parentId" rules={[{ required: true, message: '请选择上级节点' }]}>
               <TreeSelect
-                treeData={menuTreeSelectData(rows, {
+                treeData={menuTreeSelectData(allRows, {
                   rootTitle: '作为一级模块',
                   excludeIds: currentBranchIds,
                   disabledIds: parentDisabledIds,
@@ -787,17 +815,29 @@ export function SystemMenusPage() {
 export function SystemDeptsPage() {
   const { message } = App.useApp()
   const [rows, setRows] = useState<DeptRecord[]>([])
+  const [allRows, setAllRows] = useState<DeptRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [current, setCurrent] = useState<DeptRecord | null>(null)
   const [form] = Form.useForm()
+  const debouncedKeyword = useDebouncedValue(keyword)
+
+  const loadAllDepts = async () => {
+    const response = await systemApi.depts()
+    setAllRows(response.data)
+  }
 
   const loadDepts = async () => {
     setLoading(true)
     try {
-      const response = await systemApi.depts()
+      const response = await systemApi.depts({
+        keyword: debouncedKeyword || undefined,
+      })
       setRows(response.data)
+      if (!debouncedKeyword) {
+        setAllRows(response.data)
+      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载部门失败')
     } finally {
@@ -807,29 +847,20 @@ export function SystemDeptsPage() {
 
   useEffect(() => {
     void loadDepts()
+  }, [debouncedKeyword])
+
+  useEffect(() => {
+    void loadAllDepts()
   }, [])
 
-  const deptMap = useMemo(() => new Map(rows.map((item) => [item.id, item])), [rows])
+  const deptMap = useMemo(() => new Map(allRows.map((item) => [item.id, item])), [allRows])
   const treeRows = useMemo(() => buildTreeTable(rows), [rows])
-  const currentBranchIds = useMemo(() => collectSelfAndDescendantIds(rows, current?.id), [current?.id, rows])
+  const currentBranchIds = useMemo(() => collectSelfAndDescendantIds(allRows, current?.id), [allRows, current?.id])
   const parentIdValue = Form.useWatch('parentId', form)
   const parentDept = useMemo(
     () => (typeof parentIdValue === 'number' && parentIdValue > 0 ? deptMap.get(parentIdValue) ?? null : null),
     [deptMap, parentIdValue],
   )
-
-  const filteredTree = useMemo(() => {
-    if (!keyword) {
-      return treeRows
-    }
-    const query = keyword.toLowerCase()
-    const includesQuery = (item: DeptRecord & { children?: DeptRecord[] }): boolean => {
-      const selfMatch = [item.name, item.leader, item.phone, item.email].some((value) => String(value ?? '').toLowerCase().includes(query))
-      const childMatch = item.children?.some((child) => includesQuery(child as DeptRecord & { children?: DeptRecord[] })) ?? false
-      return selfMatch || childMatch
-    }
-    return treeRows.filter((item) => includesQuery(item as DeptRecord & { children?: DeptRecord[] }))
-  }, [keyword, treeRows])
 
   const openDrawer = (record?: DeptRecord, parentId?: number) => {
     setCurrent(record ?? null)
@@ -843,18 +874,23 @@ export function SystemDeptsPage() {
   }
 
   return (
-    <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <WorkspaceHeader
         title="部门管理"
-        description="部门页支持直接新增下级部门，并保留负责人、联系方式和排序，方便组织维护。"
+        description="部门页支持直接新建下级部门，并保留负责人、联系方式和排序，方便组织维护。"
         metrics={[
-          { label: '部门总数', value: rows.length, icon: <ApartmentOutlined /> },
-          { label: '一级部门', value: rows.filter((item) => item.parentId === 0).length, icon: <ApartmentOutlined /> },
-          { label: '启用部门', value: rows.filter((item) => item.status === 1).length, icon: <ApartmentOutlined /> },
+          { label: '部门总数', value: allRows.length, icon: <ApartmentOutlined /> },
+          { label: '一级部门', value: allRows.filter((item) => item.parentId === 0).length, icon: <ApartmentOutlined /> },
+          { label: '启用部门', value: allRows.filter((item) => item.status === 1).length, icon: <ApartmentOutlined /> },
         ]}
         extra={
           <>
-            <Button icon={<ReloadOutlined />} onClick={() => void loadDepts()}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                void Promise.all([loadDepts(), loadAllDepts()])
+              }}
+            >
               刷新
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>
@@ -866,12 +902,19 @@ export function SystemDeptsPage() {
 
       <Card className="workspace-card">
         <div className="workspace-toolbar">
-          <Input name="dept-search" placeholder="搜索部门名称、负责人或联系方式" value={keyword} onChange={(event) => setKeyword(event.target.value)} className="workspace-search" />
+          <Input
+            allowClear
+            name="dept-search"
+            placeholder="搜索部门名称、负责人、电话或邮箱"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            className="workspace-search"
+          />
         </div>
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={filteredTree}
+          dataSource={treeRows}
           pagination={false}
           columns={[
             { title: '部门名称', dataIndex: 'name' },
@@ -899,7 +942,7 @@ export function SystemDeptsPage() {
                     onConfirm={async () => {
                       await systemApi.deleteDept(record.id)
                       message.success('部门已删除')
-                      await loadDepts()
+                      await Promise.all([loadDepts(), loadAllDepts()])
                     }}
                   >
                     <Button type="link" danger icon={<DeleteOutlined />}>
@@ -918,9 +961,9 @@ export function SystemDeptsPage() {
         title={current ? `编辑部门 · ${current.name}` : '新建部门'}
         open={drawerOpen}
         size={580}
-        destroyOnHidden
+        destroyOnClose
         onClose={() => setDrawerOpen(false)}
-        extra={
+        footer={
           <Space>
             <Button onClick={() => setDrawerOpen(false)}>取消</Button>
             <Button
@@ -930,7 +973,7 @@ export function SystemDeptsPage() {
                 await systemApi.saveDept({ ...current, ...values })
                 message.success('部门已保存')
                 setDrawerOpen(false)
-                await loadDepts()
+                await Promise.all([loadDepts(), loadAllDepts()])
               }}
             >
               保存
@@ -938,18 +981,18 @@ export function SystemDeptsPage() {
           </Space>
         }
       >
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             type="info"
             showIcon
-            message={current ? '调整部门层级时会同步影响用户归属理解' : '建议先确定组织层级，再补负责人和联系方式'}
-            description={parentDept ? `当前会挂在「${parentDept.name}」下。` : '当前会作为一级部门显示。'}
+            message={current ? '调整部门层级时会同步影响用户的组织归属理解' : '建议先确认组织层级，再补充负责人和联系方式'}
+            description={parentDept ? `当前会挂在“${parentDept.name}”下。` : '当前会作为一级部门显示。'}
           />
 
           <Form form={form} layout="vertical">
             <Form.Item label="上级部门" name="parentId" rules={[{ required: true, message: '请选择上级部门' }]}>
               <TreeSelect
-                treeData={deptTreeSelectData(rows, {
+                treeData={deptTreeSelectData(allRows, {
                   rootTitle: '作为一级部门',
                   excludeIds: currentBranchIds,
                 })}
@@ -985,13 +1028,12 @@ export function SystemPostsPage() {
   return (
     <ResourcePage
       title="岗位管理"
-      description="岗位用于承接人员职责，和用户页联动后就能直接分配。"
+      description="岗位用于承接人员职责，和用户页面联动后就能直接分配。"
       load={systemApi.posts}
       save={systemApi.savePost}
       remove={systemApi.deletePost}
       search={{
         placeholder: '搜索岗位名称、编码或备注',
-        fields: ['name', 'code', 'remark'],
       }}
       filters={[
         {
@@ -1023,8 +1065,13 @@ export function SystemPostsPage() {
 export function SystemDictsPage() {
   const [dictTypes, setDictTypes] = useState<DictTypeRecord[]>([])
 
+  const refreshDictTypes = async () => {
+    const response = await systemApi.dictTypes()
+    setDictTypes(response.data)
+  }
+
   useEffect(() => {
-    void systemApi.dictTypes().then((response) => setDictTypes(response.data))
+    void refreshDictTypes()
   }, [])
 
   return (
@@ -1038,11 +1085,17 @@ export function SystemDictsPage() {
               title="字典类型"
               description="统一维护字典分类，供状态标签、筛选项和表单下拉复用。"
               load={systemApi.dictTypes}
-              save={systemApi.saveDictType}
-              remove={systemApi.deleteDictType}
+              save={async (payload) => {
+                const result = await systemApi.saveDictType(payload)
+                await refreshDictTypes()
+                return result
+              }}
+              remove={async (id) => {
+                await systemApi.deleteDictType(id)
+                await refreshDictTypes()
+              }}
               search={{
                 placeholder: '搜索字典名称、编码或备注',
-                fields: ['name', 'typeCode', 'remark'],
               }}
               filters={[
                 {
@@ -1080,7 +1133,6 @@ export function SystemDictsPage() {
               remove={systemApi.deleteDictData}
               search={{
                 placeholder: '搜索标签、值或 Tag 类型',
-                fields: ['label', 'value', 'tagType', (row) => dictTypes.find((item) => item.id === row.typeId)?.name],
               }}
               filters={[
                 {
@@ -1139,8 +1191,7 @@ export function SystemConfigsPage() {
       save={systemApi.saveConfig}
       remove={systemApi.deleteConfig}
       search={{
-        placeholder: '搜索参数名称、Key 或参数值',
-        fields: ['name', 'configKey', 'configValue', 'remark'],
+        placeholder: '搜索参数名称、Key、Value 或备注',
       }}
       filters={[
         {
@@ -1180,8 +1231,7 @@ export function SystemNoticesPage() {
       save={systemApi.saveNotice}
       remove={systemApi.deleteNotice}
       search={{
-        placeholder: '搜索公告标题或内容摘要',
-        fields: ['title', 'content'],
+        placeholder: '搜索公告标题或内容',
       }}
       filters={[
         {

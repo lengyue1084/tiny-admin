@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,8 +22,11 @@ public class DemoProjectController {
     private final DemoProjectService service;
 
     @GetMapping
-    public ApiResponse<?> list() {
-        var rows = service.list();
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status
+    ) {
+        var rows = service.list(keyword, status);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 

@@ -1,7 +1,18 @@
 import { DatabaseOutlined, GlobalOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { App, Button, Card, Col, Descriptions, Input, Row, Space, Statistic, Table, Tag, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { monitorApi } from '../../shared/api/services'
+
+function useDebouncedValue(value: string, delay = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value.trim()), delay)
+    return () => window.clearTimeout(timer)
+  }, [delay, value])
+
+  return debouncedValue
+}
 
 function MonitorHero({
   eyebrow,
@@ -60,7 +71,7 @@ export function MonitorServerPage() {
   }, [])
 
   return (
-          <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <MonitorHero
         eyebrow="运行监控"
         title="服务监控"
@@ -124,7 +135,7 @@ export function MonitorCachePage() {
   }, [])
 
   return (
-          <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <MonitorHero
         eyebrow="缓存监控"
         title="Redis 运行概览"
@@ -167,11 +178,14 @@ export function MonitorOnlineUsersPage() {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
+  const debouncedKeyword = useDebouncedValue(keyword)
 
   const refresh = async () => {
     setLoading(true)
     try {
-      const result = await monitorApi.onlineUsers()
+      const result = await monitorApi.onlineUsers({
+        keyword: debouncedKeyword || undefined,
+      })
       setRows(result.data)
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载在线用户失败')
@@ -182,25 +196,16 @@ export function MonitorOnlineUsersPage() {
 
   useEffect(() => {
     void refresh()
-  }, [])
-
-  const filteredRows = useMemo(() => {
-    const query = keyword.trim().toLowerCase()
-    if (!query) {
-      return rows
-    }
-    return rows.filter((row) => [row.username, row.ip, row.sessionId].some((value) => String(value ?? '').toLowerCase().includes(query)))
-  }, [keyword, rows])
+  }, [debouncedKeyword])
 
   return (
-          <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+    <Space direction="vertical" size={18} style={{ width: '100%' }}>
       <MonitorHero
         eyebrow="在线会话"
         title="在线用户"
-        description="查看当前在线会话、登录时间与活跃时间，必要时可以执行强制下线。"
+        description="查看当前在线会话、登录时间与最后活跃时间，必要时可以执行强制下线。"
         metrics={[
-          { label: '在线会话', value: rows.length },
-          { label: '当前结果', value: filteredRows.length },
+          { label: '当前结果', value: rows.length },
         ]}
         extra={
           <Button icon={<ReloadOutlined />} onClick={() => void refresh()} loading={loading}>
@@ -223,7 +228,7 @@ export function MonitorOnlineUsersPage() {
         <Table
           rowKey="sessionId"
           loading={loading}
-          dataSource={filteredRows}
+          dataSource={rows}
           columns={[
             { title: '会话 ID', dataIndex: 'sessionId', ellipsis: true },
             { title: '用户名', dataIndex: 'username', width: 160 },

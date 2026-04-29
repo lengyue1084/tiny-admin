@@ -25,29 +25,13 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { AutoComplete, Avatar, Breadcrumb, Button, Descriptions, Dropdown, Form, Input, Layout, Modal, Tag, message } from 'antd'
+import { AutoComplete, Avatar, Breadcrumb, Button, Descriptions, Dropdown, Form, Input, Layout, Modal, Spin, Tag, message } from 'antd'
 import type { InputRef } from 'antd'
 import clsx from 'clsx'
-import type { ReactNode } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ComponentType, ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../app/store/authStore'
-import { AuditLoginLogsPage, AuditOperLogsPage } from '../features/audit/AuditPages'
-import { LoginPage } from '../features/auth/LoginPage'
-import { DashboardHome } from '../features/dashboard/DashboardHome'
-import { DemoProjectsPage } from '../features/demo/DemoProjectsPage'
-import { MonitorCachePage, MonitorOnlineUsersPage, MonitorServerPage } from '../features/monitor/MonitorPages'
-import { SchedulerJobsPage, SchedulerLogsPage } from '../features/scheduler/SchedulerPages'
-import {
-  SystemConfigsPage,
-  SystemDeptsPage,
-  SystemDictsPage,
-  SystemMenusPage,
-  SystemNoticesPage,
-  SystemPostsPage,
-  SystemRolesPage,
-  SystemUsersPage,
-} from '../features/system/SystemPages'
 import { authApi } from '../shared/api/services'
 
 const { Header, Content } = Layout
@@ -74,9 +58,33 @@ const iconMap: Record<string, ReactNode> = {
   ProjectOutlined: <ProjectOutlined />,
 }
 
+function lazyPage<TModule>(loader: () => Promise<TModule>, pick: (module: TModule) => ComponentType<any>) {
+  return lazy(async () => {
+    const module = await loader()
+    return { default: pick(module) }
+  })
+}
+
+const DashboardHome = lazyPage(() => import('../features/dashboard/DashboardHome'), (module) => module.DashboardHome)
+const SystemUsersPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemUsersPage)
+const SystemRolesPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemRolesPage)
+const SystemMenusPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemMenusPage)
+const SystemDeptsPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemDeptsPage)
+const SystemPostsPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemPostsPage)
+const SystemDictsPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemDictsPage)
+const SystemConfigsPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemConfigsPage)
+const SystemNoticesPage = lazyPage(() => import('../features/system/SystemPages'), (module) => module.SystemNoticesPage)
+const AuditOperLogsPage = lazyPage(() => import('../features/audit/AuditPages'), (module) => module.AuditOperLogsPage)
+const AuditLoginLogsPage = lazyPage(() => import('../features/audit/AuditPages'), (module) => module.AuditLoginLogsPage)
+const MonitorServerPage = lazyPage(() => import('../features/monitor/MonitorPages'), (module) => module.MonitorServerPage)
+const MonitorCachePage = lazyPage(() => import('../features/monitor/MonitorPages'), (module) => module.MonitorCachePage)
+const MonitorOnlineUsersPage = lazyPage(() => import('../features/monitor/MonitorPages'), (module) => module.MonitorOnlineUsersPage)
+const SchedulerJobsPage = lazyPage(() => import('../features/scheduler/SchedulerPages'), (module) => module.SchedulerJobsPage)
+const SchedulerLogsPage = lazyPage(() => import('../features/scheduler/SchedulerPages'), (module) => module.SchedulerLogsPage)
+const DemoProjectsPage = lazyPage(() => import('../features/demo/DemoProjectsPage'), (module) => module.DemoProjectsPage)
+
 const pageRegistry: Record<string, ReactNode> = {
   '/': <DashboardHome />,
-  '/login': <LoginPage />,
   '/system/users': <SystemUsersPage />,
   '/system/roles': <SystemRolesPage />,
   '/system/menus': <SystemMenusPage />,
@@ -477,7 +485,17 @@ export function AppShell() {
         </Header>
 
         <Content className="shell__content">
-          <div className="shell__contentInner">{page}</div>
+          <div className="shell__contentInner">
+            <Suspense
+              fallback={
+                <div className="shell__pageLoading">
+                  <Spin size="large" />
+                </div>
+              }
+            >
+              {page}
+            </Suspense>
+          </div>
         </Content>
       </Layout>
 

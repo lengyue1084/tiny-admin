@@ -1,5 +1,7 @@
 import { apiClient, type ApiEnvelope } from './client'
 
+export type ListQuery = Record<string, string | number | boolean | undefined>
+
 export type LoginPayload = {
   username: string
   password: string
@@ -170,6 +172,9 @@ const unwrap = async <T>(promise: Promise<{ data: ApiEnvelope<T> }>) => {
   return response.data
 }
 
+const getList = <T>(url: string, params?: ListQuery) =>
+  unwrap(apiClient.get<ApiEnvelope<T>>(url, { params }))
+
 export const authApi = {
   captcha: () => unwrap(apiClient.get<ApiEnvelope<{ captchaKey: string; captchaImage: string; captchaText: string }>>('/api/auth/captcha')),
   login: (payload: LoginPayload) => unwrap(apiClient.post<ApiEnvelope<LoginResponse>>('/api/auth/login', payload)),
@@ -183,50 +188,50 @@ export const authApi = {
 export const systemApi = {
   meta: () => unwrap(apiClient.get<ApiEnvelope<SystemMeta>>('/api/system/meta')),
   currentMenus: () => unwrap(apiClient.get<ApiEnvelope<MenuNode[]>>('/api/system/menus/current')),
-  users: () => unwrap(apiClient.get<ApiEnvelope<UserRecord[]>>('/api/system/users')),
+  users: (params?: ListQuery) => getList<UserRecord[]>('/api/system/users', params),
   saveUser: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<UserRecord>>('/api/system/users', payload)),
   deleteUser: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/users/${id}`)),
-  roles: () => unwrap(apiClient.get<ApiEnvelope<RoleRecord[]>>('/api/system/roles')),
+  roles: (params?: ListQuery) => getList<RoleRecord[]>('/api/system/roles', params),
   saveRole: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<RoleRecord>>('/api/system/roles', payload)),
   deleteRole: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/roles/${id}`)),
-  menus: () => unwrap(apiClient.get<ApiEnvelope<MenuRecord[]>>('/api/system/menus')),
+  menus: (params?: ListQuery) => getList<MenuRecord[]>('/api/system/menus', params),
   saveMenu: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<MenuRecord>>('/api/system/menus', payload)),
   deleteMenu: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/menus/${id}`)),
-  depts: () => unwrap(apiClient.get<ApiEnvelope<DeptRecord[]>>('/api/system/depts')),
+  depts: (params?: ListQuery) => getList<DeptRecord[]>('/api/system/depts', params),
   saveDept: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DeptRecord>>('/api/system/depts', payload)),
   deleteDept: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/depts/${id}`)),
-  posts: () => unwrap(apiClient.get<ApiEnvelope<PostRecord[]>>('/api/system/posts')),
+  posts: (params?: ListQuery) => getList<PostRecord[]>('/api/system/posts', params),
   savePost: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<PostRecord>>('/api/system/posts', payload)),
   deletePost: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/posts/${id}`)),
-  dictTypes: () => unwrap(apiClient.get<ApiEnvelope<DictTypeRecord[]>>('/api/system/dicts/types')),
-  dictData: () => unwrap(apiClient.get<ApiEnvelope<DictDataRecord[]>>('/api/system/dicts/data')),
+  dictTypes: (params?: ListQuery) => getList<DictTypeRecord[]>('/api/system/dicts/types', params),
+  dictData: (params?: ListQuery) => getList<DictDataRecord[]>('/api/system/dicts/data', params),
   saveDictType: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DictTypeRecord>>('/api/system/dicts/types', payload)),
   deleteDictType: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/dicts/types/${id}`)),
   saveDictData: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<DictDataRecord>>('/api/system/dicts/data', payload)),
   deleteDictData: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/dicts/data/${id}`)),
-  configs: () => unwrap(apiClient.get<ApiEnvelope<ConfigRecord[]>>('/api/system/configs')),
+  configs: (params?: ListQuery) => getList<ConfigRecord[]>('/api/system/configs', params),
   saveConfig: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<ConfigRecord>>('/api/system/configs', payload)),
   deleteConfig: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/configs/${id}`)),
-  notices: () => unwrap(apiClient.get<ApiEnvelope<NoticeRecord[]>>('/api/system/notices')),
+  notices: (params?: ListQuery) => getList<NoticeRecord[]>('/api/system/notices', params),
   saveNotice: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<NoticeRecord>>('/api/system/notices', payload)),
   deleteNotice: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/system/notices/${id}`)),
 }
 
 export const auditApi = {
-  operLogs: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/audit/oper-logs')),
-  loginLogs: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/audit/login-logs')),
+  operLogs: (params?: ListQuery) => getList<any[]>('/api/audit/oper-logs', params),
+  loginLogs: (params?: ListQuery) => getList<any[]>('/api/audit/login-logs', params),
 }
 
 export const monitorApi = {
   server: () => unwrap(apiClient.get<ApiEnvelope<Record<string, unknown>>>('/api/monitor/server')),
   cache: () => unwrap(apiClient.get<ApiEnvelope<Record<string, unknown>>>('/api/monitor/cache')),
-  onlineUsers: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/monitor/online-users')),
+  onlineUsers: (params?: ListQuery) => getList<any[]>('/api/monitor/online-users', params),
   forceLogout: (sessionId: string) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/monitor/online-users/${sessionId}`)),
 }
 
 export const schedulerApi = {
-  jobs: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/scheduler/jobs')),
-  logs: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/scheduler/job-logs')),
+  jobs: (params?: ListQuery) => getList<any[]>('/api/scheduler/jobs', params),
+  logs: (params?: ListQuery) => getList<any[]>('/api/scheduler/job-logs', params),
   saveJob: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/scheduler/jobs', payload)),
   triggerJob: (jobId: number) => unwrap(apiClient.post<ApiEnvelope<null>>(`/api/scheduler/jobs/${jobId}/trigger`)),
   updateJobStatus: (jobId: number, status: number) =>
@@ -235,7 +240,7 @@ export const schedulerApi = {
 }
 
 export const demoApi = {
-  projects: () => unwrap(apiClient.get<ApiEnvelope<any[]>>('/api/demo/projects')),
+  projects: (params?: ListQuery) => getList<any[]>('/api/demo/projects', params),
   saveProject: (payload: Record<string, unknown>) => unwrap(apiClient.post<ApiEnvelope<any>>('/api/demo/projects', payload)),
   deleteProject: (id: number) => unwrap(apiClient.delete<ApiEnvelope<null>>(`/api/demo/projects/${id}`)),
 }

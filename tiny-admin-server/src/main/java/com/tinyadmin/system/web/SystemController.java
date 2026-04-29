@@ -31,16 +31,23 @@ import com.tinyadmin.system.service.DeptTreeBuilder;
 import com.tinyadmin.system.service.MenuTreeBuilder;
 import com.tinyadmin.system.service.SystemLookupService;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -85,33 +92,47 @@ public class SystemController {
 
     @GetMapping("/users")
     @PreAuthorize("hasAuthority('system:user:list')")
-    public ApiResponse<List<UserView>> users() {
-        List<UserView> rows = userMapper.selectList(new LambdaQueryWrapper<UserEntity>().orderByAsc(UserEntity::getId))
-                .stream()
-                .map(user -> {
-                    DeptEntity dept = lookupService.getDept(user.getDeptId());
-                    PostEntity post = lookupService.getPost(user.getPostId());
-                    return new UserView(
-                            user.getId(),
-                            user.getUsername(),
-                            user.getNickName(),
-                            user.getEmail(),
-                            user.getPhone(),
-                            user.getDeptId(),
-                            dept == null ? "" : dept.getName(),
-                            user.getPostId(),
-                            post == null ? "" : post.getName(),
-                            user.getStatus(),
-                            user.getDataScope(),
-                            lookupService.getRoleIdsByUserId(user.getId())
-                    );
-                })
-                .toList();
+    public ApiResponse<List<UserView>> users(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Long deptId
+    ) {
+        List<Long> scopedDeptIds = collectDeptIdsWithChildren(deptId);
+        List<Long> matchedDeptIds = findMatchingDeptIds(keyword);
+        List<Long> matchedPostIds = findMatchingPostIds(keyword);
+
+        LambdaQueryWrapper<UserEntity> query = new LambdaQueryWrapper<UserEntity>()
+                .orderByAsc(UserEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> {
+                wrapper.like(UserEntity::getUsername, keyword)
+                        .or()
+                        .like(UserEntity::getNickName, keyword)
+                        .or()
+                        .like(UserEntity::getEmail, keyword)
+                        .or()
+                        .like(UserEntity::getPhone, keyword);
+                if (!matchedDeptIds.isEmpty()) {
+                    wrapper.or().in(UserEntity::getDeptId, matchedDeptIds);
+                }
+                if (!matchedPostIds.isEmpty()) {
+                    wrapper.or().in(UserEntity::getPostId, matchedPostIds);
+                }
+            });
+        }
+        if (status != null) {
+            query.eq(UserEntity::getStatus, status);
+        }
+        if (!scopedDeptIds.isEmpty()) {
+            query.in(UserEntity::getDeptId, scopedDeptIds);
+        }
+
+        List<UserView> rows = userMapper.selectList(query).stream().map(this::toUserView).toList();
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
     @PostMapping("/users")
-    @OperLog(module = "系统管理", action = "保存用户")
+    @OperLog(module = "System", action = "Save user")
     @PreAuthorize("hasAuthority('system:user:save')")
     public ApiResponse<UserEntity> saveUser(@RequestBody UserPayload payload) {
         UserEntity entity = payload.toUser();
@@ -137,7 +158,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/users/{id}")
-    @OperLog(module = "系统管理", action = "删除用户")
+    @OperLog(module = "System", action = "Delete user")
     @PreAuthorize("hasAuthority('system:user:delete')")
     public ApiResponse<Void> deleteUser(@PathVariable Long id) {
         userRoleMapper.delete(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getUserId, id));
@@ -146,8 +167,29 @@ public class SystemController {
     }
 
     @GetMapping("/roles")
-    public ApiResponse<List<RoleView>> roles() {
-        List<RoleView> rows = roleMapper.selectList(new LambdaQueryWrapper<RoleEntity>().orderByAsc(RoleEntity::getId))
+    public ApiResponse<List<RoleView>> roles(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String dataScope
+    ) {
+        LambdaQueryWrapper<RoleEntity> query = new LambdaQueryWrapper<RoleEntity>()
+                .orderByAsc(RoleEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(RoleEntity::getName, keyword)
+                    .or()
+                    .like(RoleEntity::getCode, keyword)
+                    .or()
+                    .like(RoleEntity::getRemark, keyword));
+        }
+        if (status != null) {
+            query.eq(RoleEntity::getStatus, status);
+        }
+        if (StringUtils.hasText(dataScope)) {
+            query.eq(RoleEntity::getDataScope, dataScope);
+        }
+
+        List<RoleView> rows = roleMapper.selectList(query)
                 .stream()
                 .map(role -> new RoleView(
                         role.getId(),
@@ -163,7 +205,7 @@ public class SystemController {
     }
 
     @PostMapping("/roles")
-    @OperLog(module = "系统管理", action = "保存角色")
+    @OperLog(module = "System", action = "Save role")
     public ApiResponse<RoleEntity> saveRole(@RequestBody RolePayload payload) {
         RoleEntity entity = payload.toRole();
         if (entity.getId() == null) {
@@ -179,7 +221,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/roles/{id}")
-    @OperLog(module = "系统管理", action = "删除角色")
+    @OperLog(module = "System", action = "Delete role")
     public ApiResponse<Void> deleteRole(@PathVariable Long id) {
         roleMenuMapper.delete(new LambdaQueryWrapper<RoleMenuEntity>().eq(RoleMenuEntity::getRoleId, id));
         userRoleMapper.delete(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getRoleId, id));
@@ -188,13 +230,13 @@ public class SystemController {
     }
 
     @GetMapping("/menus")
-    public ApiResponse<List<MenuEntity>> menus() {
-        List<MenuEntity> rows = lookupService.listMenus();
+    public ApiResponse<List<MenuEntity>> menus(@RequestParam(required = false) String keyword) {
+        List<MenuEntity> rows = filterMenus(keyword);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
     @PostMapping("/menus")
-    @OperLog(module = "系统管理", action = "保存菜单")
+    @OperLog(module = "System", action = "Save menu")
     public ApiResponse<MenuEntity> saveMenu(@RequestBody MenuEntity entity) {
         validateMenu(entity);
         if (entity.getId() == null) {
@@ -206,11 +248,11 @@ public class SystemController {
     }
 
     @DeleteMapping("/menus/{id}")
-    @OperLog(module = "系统管理", action = "删除菜单")
+    @OperLog(module = "System", action = "Delete menu")
     public ApiResponse<Void> deleteMenu(@PathVariable Long id) {
         long childCount = menuMapper.selectCount(new LambdaQueryWrapper<MenuEntity>().eq(MenuEntity::getParentId, id));
         if (childCount > 0) {
-            throw new BizException("A0400", "请先删除子菜单后再删除当前节点");
+            throw new BizException("A0400", "Delete child menus before deleting the current menu");
         }
         roleMenuMapper.delete(new LambdaQueryWrapper<RoleMenuEntity>().eq(RoleMenuEntity::getMenuId, id));
         menuMapper.deleteById(id);
@@ -218,8 +260,8 @@ public class SystemController {
     }
 
     @GetMapping("/depts")
-    public ApiResponse<List<DeptEntity>> depts() {
-        List<DeptEntity> rows = lookupService.listDepts();
+    public ApiResponse<List<DeptEntity>> depts(@RequestParam(required = false) String keyword) {
+        List<DeptEntity> rows = filterDepts(keyword);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
@@ -238,19 +280,36 @@ public class SystemController {
     public ApiResponse<Void> deleteDept(@PathVariable Long id) {
         long childCount = deptMapper.selectCount(new LambdaQueryWrapper<DeptEntity>().eq(DeptEntity::getParentId, id));
         if (childCount > 0) {
-            throw new BizException("A0400", "请先删除下级部门后再删除当前部门");
+            throw new BizException("A0400", "Delete child departments before deleting the current department");
         }
         long userCount = userMapper.selectCount(new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getDeptId, id));
         if (userCount > 0) {
-            throw new BizException("A0400", "当前部门下仍有关联用户，无法直接删除");
+            throw new BizException("A0400", "Current department still has bound users");
         }
         deptMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
     @GetMapping("/posts")
-    public ApiResponse<List<PostEntity>> posts() {
-        List<PostEntity> rows = lookupService.listPosts();
+    public ApiResponse<List<PostEntity>> posts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status
+    ) {
+        LambdaQueryWrapper<PostEntity> query = new LambdaQueryWrapper<PostEntity>()
+                .orderByAsc(PostEntity::getOrderNum)
+                .orderByAsc(PostEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(PostEntity::getName, keyword)
+                    .or()
+                    .like(PostEntity::getCode, keyword)
+                    .or()
+                    .like(PostEntity::getRemark, keyword));
+        }
+        if (status != null) {
+            query.eq(PostEntity::getStatus, status);
+        }
+        List<PostEntity> rows = postMapper.selectList(query);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
@@ -268,21 +327,57 @@ public class SystemController {
     public ApiResponse<Void> deletePost(@PathVariable Long id) {
         long userCount = userMapper.selectCount(new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getPostId, id));
         if (userCount > 0) {
-            throw new BizException("A0400", "当前岗位下仍有关联用户，无法直接删除");
+            throw new BizException("A0400", "Current post still has bound users");
         }
         postMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
     @GetMapping("/dicts/types")
-    public ApiResponse<List<DictTypeEntity>> dictTypes() {
-        List<DictTypeEntity> rows = dictTypeMapper.selectList(new LambdaQueryWrapper<DictTypeEntity>().orderByAsc(DictTypeEntity::getId));
+    public ApiResponse<List<DictTypeEntity>> dictTypes(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status
+    ) {
+        LambdaQueryWrapper<DictTypeEntity> query = new LambdaQueryWrapper<DictTypeEntity>()
+                .orderByAsc(DictTypeEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(DictTypeEntity::getName, keyword)
+                    .or()
+                    .like(DictTypeEntity::getTypeCode, keyword)
+                    .or()
+                    .like(DictTypeEntity::getRemark, keyword));
+        }
+        if (status != null) {
+            query.eq(DictTypeEntity::getStatus, status);
+        }
+        List<DictTypeEntity> rows = dictTypeMapper.selectList(query);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
     @GetMapping("/dicts/data")
-    public ApiResponse<List<DictDataEntity>> dictData() {
-        List<DictDataEntity> rows = dictDataMapper.selectList(new LambdaQueryWrapper<DictDataEntity>().orderByAsc(DictDataEntity::getOrderNum));
+    public ApiResponse<List<DictDataEntity>> dictData(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long typeId,
+            @RequestParam(required = false) Integer status
+    ) {
+        LambdaQueryWrapper<DictDataEntity> query = new LambdaQueryWrapper<DictDataEntity>()
+                .orderByAsc(DictDataEntity::getOrderNum);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(DictDataEntity::getLabel, keyword)
+                    .or()
+                    .like(DictDataEntity::getValue, keyword)
+                    .or()
+                    .like(DictDataEntity::getTagType, keyword));
+        }
+        if (typeId != null) {
+            query.eq(DictDataEntity::getTypeId, typeId);
+        }
+        if (status != null) {
+            query.eq(DictDataEntity::getStatus, status);
+        }
+        List<DictDataEntity> rows = dictDataMapper.selectList(query);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
@@ -300,7 +395,7 @@ public class SystemController {
     public ApiResponse<Void> deleteDictType(@PathVariable Long id) {
         long dataCount = dictDataMapper.selectCount(new LambdaQueryWrapper<DictDataEntity>().eq(DictDataEntity::getTypeId, id));
         if (dataCount > 0) {
-            throw new BizException("A0400", "请先删除字典数据后再删除字典类型");
+            throw new BizException("A0400", "Delete dictionary items before deleting the dictionary type");
         }
         dictTypeMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
@@ -323,8 +418,26 @@ public class SystemController {
     }
 
     @GetMapping("/configs")
-    public ApiResponse<List<ConfigEntity>> configs() {
-        List<ConfigEntity> rows = configMapper.selectList(new LambdaQueryWrapper<ConfigEntity>().orderByAsc(ConfigEntity::getId));
+    public ApiResponse<List<ConfigEntity>> configs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer builtin
+    ) {
+        LambdaQueryWrapper<ConfigEntity> query = new LambdaQueryWrapper<ConfigEntity>()
+                .orderByAsc(ConfigEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(ConfigEntity::getName, keyword)
+                    .or()
+                    .like(ConfigEntity::getConfigKey, keyword)
+                    .or()
+                    .like(ConfigEntity::getConfigValue, keyword)
+                    .or()
+                    .like(ConfigEntity::getRemark, keyword));
+        }
+        if (builtin != null) {
+            query.eq(ConfigEntity::getBuiltin, builtin);
+        }
+        List<ConfigEntity> rows = configMapper.selectList(query);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
@@ -342,15 +455,33 @@ public class SystemController {
     public ApiResponse<Void> deleteConfig(@PathVariable Long id) {
         ConfigEntity config = configMapper.selectById(id);
         if (config != null && Integer.valueOf(1).equals(config.getBuiltin())) {
-            throw new BizException("A0400", "内置参数不允许删除");
+            throw new BizException("A0400", "Built-in config cannot be deleted");
         }
         configMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
     @GetMapping("/notices")
-    public ApiResponse<List<NoticeEntity>> notices() {
-        List<NoticeEntity> rows = noticeMapper.selectList(new LambdaQueryWrapper<NoticeEntity>().orderByDesc(NoticeEntity::getId));
+    public ApiResponse<List<NoticeEntity>> notices(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer status
+    ) {
+        LambdaQueryWrapper<NoticeEntity> query = new LambdaQueryWrapper<NoticeEntity>()
+                .orderByDesc(NoticeEntity::getId);
+        if (StringUtils.hasText(keyword)) {
+            query.and(wrapper -> wrapper
+                    .like(NoticeEntity::getTitle, keyword)
+                    .or()
+                    .like(NoticeEntity::getContent, keyword));
+        }
+        if (StringUtils.hasText(type)) {
+            query.eq(NoticeEntity::getType, type);
+        }
+        if (status != null) {
+            query.eq(NoticeEntity::getStatus, status);
+        }
+        List<NoticeEntity> rows = noticeMapper.selectList(query);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
@@ -370,33 +501,153 @@ public class SystemController {
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
+    private UserView toUserView(UserEntity user) {
+        DeptEntity dept = lookupService.getDept(user.getDeptId());
+        PostEntity post = lookupService.getPost(user.getPostId());
+        return new UserView(
+                user.getId(),
+                user.getUsername(),
+                user.getNickName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getDeptId(),
+                dept == null ? "" : dept.getName(),
+                user.getPostId(),
+                post == null ? "" : post.getName(),
+                user.getStatus(),
+                user.getDataScope(),
+                lookupService.getRoleIdsByUserId(user.getId())
+        );
+    }
+
+    private List<Long> collectDeptIdsWithChildren(Long deptId) {
+        if (deptId == null) {
+            return Collections.emptyList();
+        }
+        List<DeptEntity> allDepts = lookupService.listDepts();
+        Set<Long> included = new HashSet<>();
+        included.add(deptId);
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (DeptEntity dept : allDepts) {
+                if (dept.getParentId() != null && included.contains(dept.getParentId()) && included.add(dept.getId())) {
+                    changed = true;
+                }
+            }
+        }
+        return included.stream().toList();
+    }
+
+    private List<Long> findMatchingDeptIds(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return Collections.emptyList();
+        }
+        return lookupService.listDepts().stream()
+                .filter(item -> contains(item.getName(), keyword)
+                        || contains(item.getLeader(), keyword)
+                        || contains(item.getPhone(), keyword)
+                        || contains(item.getEmail(), keyword))
+                .map(DeptEntity::getId)
+                .toList();
+    }
+
+    private List<Long> findMatchingPostIds(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return Collections.emptyList();
+        }
+        return lookupService.listPosts().stream()
+                .filter(item -> contains(item.getName(), keyword)
+                        || contains(item.getCode(), keyword)
+                        || contains(item.getRemark(), keyword))
+                .map(PostEntity::getId)
+                .toList();
+    }
+
+    private List<MenuEntity> filterMenus(String keyword) {
+        List<MenuEntity> allMenus = lookupService.listMenus();
+        if (!StringUtils.hasText(keyword)) {
+            return allMenus;
+        }
+        Map<Long, MenuEntity> menuMap = new HashMap<>();
+        for (MenuEntity menu : allMenus) {
+            menuMap.put(menu.getId(), menu);
+        }
+        Set<Long> includedIds = new HashSet<>();
+        for (MenuEntity menu : allMenus) {
+            if (contains(menu.getName(), keyword)
+                    || contains(menu.getPath(), keyword)
+                    || contains(menu.getComponent(), keyword)
+                    || contains(menu.getPermissionCode(), keyword)) {
+                includeAncestors(menu.getId(), menuMap, includedIds, MenuEntity::getParentId);
+            }
+        }
+        return allMenus.stream().filter(item -> includedIds.contains(item.getId())).toList();
+    }
+
+    private List<DeptEntity> filterDepts(String keyword) {
+        List<DeptEntity> allDepts = lookupService.listDepts();
+        if (!StringUtils.hasText(keyword)) {
+            return allDepts;
+        }
+        Map<Long, DeptEntity> deptMap = new HashMap<>();
+        for (DeptEntity dept : allDepts) {
+            deptMap.put(dept.getId(), dept);
+        }
+        Set<Long> includedIds = new HashSet<>();
+        for (DeptEntity dept : allDepts) {
+            if (contains(dept.getName(), keyword)
+                    || contains(dept.getLeader(), keyword)
+                    || contains(dept.getPhone(), keyword)
+                    || contains(dept.getEmail(), keyword)) {
+                includeAncestors(dept.getId(), deptMap, includedIds, DeptEntity::getParentId);
+            }
+        }
+        return allDepts.stream().filter(item -> includedIds.contains(item.getId())).toList();
+    }
+
+    private <T> void includeAncestors(Long id, Map<Long, T> itemMap, Set<Long> includedIds, Function<T, Long> parentIdGetter) {
+        Long currentId = id;
+        while (currentId != null && currentId > 0 && includedIds.add(currentId)) {
+            T current = itemMap.get(currentId);
+            if (current == null) {
+                return;
+            }
+            currentId = parentIdGetter.apply(current);
+        }
+    }
+
+    private boolean contains(String value, String keyword) {
+        return StringUtils.hasText(value) && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
     private void validateMenu(MenuEntity entity) {
         if (entity.getParentId() != null && entity.getId() != null && entity.getParentId().equals(entity.getId())) {
-            throw new BizException("A0400", "菜单不能选择自己作为上级");
+            throw new BizException("A0400", "Menu cannot choose itself as parent");
         }
         if (entity.getParentId() != null && entity.getParentId() > 0) {
             MenuEntity parent = menuMapper.selectById(entity.getParentId());
             if (parent == null) {
-                throw new BizException("A0400", "上级菜单不存在");
+                throw new BizException("A0400", "Parent menu does not exist");
             }
             if ("BUTTON".equals(parent.getType())) {
-                throw new BizException("A0400", "按钮类型节点不能作为上级菜单");
+                throw new BizException("A0400", "Button node cannot be used as parent menu");
             }
         }
         if (lookupService.wouldCreateMenuCycle(entity.getId(), entity.getParentId())) {
-            throw new BizException("A0400", "上级菜单不能选择当前菜单的下级节点");
+            throw new BizException("A0400", "Parent menu cannot be a child of the current menu");
         }
     }
 
     private void validateDept(DeptEntity entity) {
         if (entity.getParentId() != null && entity.getId() != null && entity.getParentId().equals(entity.getId())) {
-            throw new BizException("A0400", "部门不能选择自己作为上级");
+            throw new BizException("A0400", "Department cannot choose itself as parent");
         }
         if (entity.getParentId() != null && entity.getParentId() > 0 && deptMapper.selectById(entity.getParentId()) == null) {
-            throw new BizException("A0400", "上级部门不存在");
+            throw new BizException("A0400", "Parent department does not exist");
         }
         if (lookupService.wouldCreateDeptCycle(entity.getId(), entity.getParentId())) {
-            throw new BizException("A0400", "上级部门不能选择当前部门的下级节点");
+            throw new BizException("A0400", "Parent department cannot be a child of the current department");
         }
     }
 

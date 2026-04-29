@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +33,8 @@ public class MonitorController {
     }
 
     @GetMapping("/online-users")
-    public ApiResponse<?> onlineUsers() {
-        var rows = auditService.listOnlineUsers();
+    public ApiResponse<?> onlineUsers(@RequestParam(required = false) String keyword) {
+        var rows = auditService.listOnlineUsers(keyword);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
