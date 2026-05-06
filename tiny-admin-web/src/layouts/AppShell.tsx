@@ -25,7 +25,7 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { AutoComplete, Avatar, Breadcrumb, Button, Descriptions, Dropdown, Form, Input, Layout, Modal, Spin, Tag, message } from 'antd'
+import { App, AutoComplete, Avatar, Breadcrumb, Button, Descriptions, Dropdown, Form, Input, Layout, Modal, Spin, Tag } from 'antd'
 import type { InputRef } from 'antd'
 import clsx from 'clsx'
 import type { ComponentType, ReactNode } from 'react'
@@ -33,6 +33,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../app/store/authStore'
 import { authApi } from '../shared/api/services'
+import { authStorage } from '../shared/hooks/storage'
 
 const { Header, Content } = Layout
 
@@ -118,6 +119,7 @@ type PasswordFormValues = {
 }
 
 export function AppShell() {
+  const { message } = App.useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, menus, logout } = useAuthStore()
@@ -271,9 +273,12 @@ export function AppShell() {
     setSavingPassword(true)
     try {
       await authApi.updatePassword(values.oldPassword, values.newPassword)
+      authStorage.clear()
+      useAuthStore.setState({ user: null, menus: [], bootstrapped: true })
       message.success('密码已更新，请使用新密码重新登录')
       passwordForm.resetFields()
       setPasswordVisible(false)
+      navigate('/login', { replace: true })
     } catch (error) {
       message.error(error instanceof Error ? error.message : '密码更新失败')
     } finally {
@@ -416,7 +421,7 @@ export function AppShell() {
                     prefix={<SearchOutlined />}
                     placeholder="搜索页面、命令、用户、参数配置"
                     size="large"
-                    bordered={false}
+                    variant="borderless"
                     onBlur={() => closeSearch(false)}
                     onKeyDown={(event) => {
                       if (event.key === 'Escape') {

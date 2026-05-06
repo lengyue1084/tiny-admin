@@ -24,7 +24,7 @@ public class CaptchaService {
         String text = UUID.randomUUID().toString().replace("-", "").substring(0, 4).toUpperCase();
         String key = UUID.randomUUID().toString();
         captchaStore.save(key, text, Duration.ofMinutes(5));
-        return new CaptchaResponse(key, render(text), text);
+        return new CaptchaResponse(key, render(text));
     }
 
     public boolean validate(String key, String value) {

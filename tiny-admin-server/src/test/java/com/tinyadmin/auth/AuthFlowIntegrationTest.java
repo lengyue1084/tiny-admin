@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import com.tinyadmin.infra.store.CaptchaStore;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -21,6 +22,9 @@ class AuthFlowIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private CaptchaStore captchaStore;
 
     @Test
     void captchaEndpointShouldReturnKeyAndImage() throws Exception {
@@ -55,7 +59,7 @@ class AuthFlowIntegrationTest {
 
         String body = captchaResult.getResponse().getContentAsString();
         String captchaKey = JsonTestHelper.read(body, "$.data.captchaKey");
-        String captchaCode = JsonTestHelper.read(body, "$.data.captchaText");
+        String captchaCode = captchaStore.get(captchaKey).orElseThrow();
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

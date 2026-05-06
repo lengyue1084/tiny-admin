@@ -1,11 +1,12 @@
 import { LockOutlined, SafetyOutlined, UserOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd'
+import { Alert, App, Button, Card, Form, Input, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../app/store/authStore'
 import { authApi } from '../../shared/api/services'
 
 export function LoginPage() {
+  const { message } = App.useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const { login, loading, user } = useAuthStore()

@@ -176,7 +176,7 @@ const getList = <T>(url: string, params?: ListQuery) =>
   unwrap(apiClient.get<ApiEnvelope<T>>(url, { params }))
 
 export const authApi = {
-  captcha: () => unwrap(apiClient.get<ApiEnvelope<{ captchaKey: string; captchaImage: string; captchaText: string }>>('/api/auth/captcha')),
+  captcha: () => unwrap(apiClient.get<ApiEnvelope<{ captchaKey: string; captchaImage: string }>>('/api/auth/captcha')),
   login: (payload: LoginPayload) => unwrap(apiClient.post<ApiEnvelope<LoginResponse>>('/api/auth/login', payload)),
   refresh: (refreshToken: string) => unwrap(apiClient.post<ApiEnvelope<LoginResponse>>('/api/auth/refresh', { refreshToken })),
   profile: () => unwrap(apiClient.get<ApiEnvelope<CurrentUser>>('/api/auth/profile')),

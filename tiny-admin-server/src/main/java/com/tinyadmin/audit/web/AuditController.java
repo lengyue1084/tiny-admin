@@ -4,6 +4,7 @@ import com.tinyadmin.audit.service.AuditService;
 import com.tinyadmin.common.api.ApiResponse;
 import com.tinyadmin.common.web.RequestTraceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ public class AuditController {
     private final AuditService auditService;
 
     @GetMapping("/oper-logs")
+    @PreAuthorize("hasAuthority('audit:oper:list')")
     public ApiResponse<?> operLogs(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer success
@@ -26,6 +28,7 @@ public class AuditController {
     }
 
     @GetMapping("/login-logs")
+    @PreAuthorize("hasAuthority('audit:login:list')")
     public ApiResponse<?> loginLogs(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status

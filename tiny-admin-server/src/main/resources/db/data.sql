@@ -5,7 +5,7 @@ INSERT INTO sys_post (id, name, code, order_num, status, remark)
 VALUES (1, '平台管理员岗', 'platform_admin', 1, 1, '默认管理员岗位');
 
 INSERT INTO sys_user (id, username, password, nick_name, email, phone, dept_id, post_id, status, data_scope)
-VALUES (1, 'admin', 'admin123', '系统管理员', 'admin@tinyadmin.local', '13800000000', 1, 1, 1, 'ALL');
+VALUES (1, 'admin', '$2a$10$JPnazw1XaVSftJLTSEkEienvJpOiUThh81DTspEdLV4immRGUEIL2', '系统管理员', 'admin@tinyadmin.local', '13800000000', 1, 1, 1, 'ALL');
 
 INSERT INTO sys_role (id, name, code, data_scope, status, remark)
 VALUES (1, '超级管理员', 'SUPER_ADMIN', 'ALL', 1, '默认超级管理员角色');

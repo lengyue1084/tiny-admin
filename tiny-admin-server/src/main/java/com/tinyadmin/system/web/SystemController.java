@@ -5,6 +5,7 @@ import com.tinyadmin.common.api.ApiResponse;
 import com.tinyadmin.common.exception.BizException;
 import com.tinyadmin.common.web.RequestTraceContext;
 import com.tinyadmin.infra.audit.OperLog;
+import com.tinyadmin.infra.security.SecurityUtils;
 import com.tinyadmin.system.domain.ConfigEntity;
 import com.tinyadmin.system.domain.DeptEntity;
 import com.tinyadmin.system.domain.DictDataEntity;
@@ -135,6 +136,7 @@ public class SystemController {
     @OperLog(module = "System", action = "Save user")
     @PreAuthorize("hasAuthority('system:user:save')")
     public ApiResponse<UserEntity> saveUser(@RequestBody UserPayload payload) {
+        validateUserPayload(payload);
         UserEntity entity = payload.toUser();
         entity.setPassword(payload.id() == null
                 ? passwordEncoder.encode(payload.password() == null ? "admin123" : payload.password())
@@ -143,6 +145,9 @@ public class SystemController {
             userMapper.insert(entity);
         } else {
             UserEntity existing = userMapper.selectById(entity.getId());
+            if (existing == null) {
+                throw new BizException("A0404", "User does not exist");
+            }
             if (payload.password() == null || payload.password().isBlank()) {
                 entity.setPassword(existing.getPassword());
             } else {
@@ -161,12 +166,16 @@ public class SystemController {
     @OperLog(module = "System", action = "Delete user")
     @PreAuthorize("hasAuthority('system:user:delete')")
     public ApiResponse<Void> deleteUser(@PathVariable Long id) {
+        if (SecurityUtils.currentPrincipal().session().getUserId().equals(id)) {
+            throw new BizException("A0400", "Current user cannot delete itself");
+        }
         userRoleMapper.delete(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getUserId, id));
         userMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
     @GetMapping("/roles")
+    @PreAuthorize("hasAuthority('system:role:list')")
     public ApiResponse<List<RoleView>> roles(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status,
@@ -206,7 +215,9 @@ public class SystemController {
 
     @PostMapping("/roles")
     @OperLog(module = "System", action = "Save role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<RoleEntity> saveRole(@RequestBody RolePayload payload) {
+        validateRolePayload(payload);
         RoleEntity entity = payload.toRole();
         if (entity.getId() == null) {
             roleMapper.insert(entity);
@@ -222,7 +233,12 @@ public class SystemController {
 
     @DeleteMapping("/roles/{id}")
     @OperLog(module = "System", action = "Delete role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteRole(@PathVariable Long id) {
+        RoleEntity role = roleMapper.selectById(id);
+        if (role != null && "SUPER_ADMIN".equals(role.getCode())) {
+            throw new BizException("A0400", "Built-in super admin role cannot be deleted");
+        }
         roleMenuMapper.delete(new LambdaQueryWrapper<RoleMenuEntity>().eq(RoleMenuEntity::getRoleId, id));
         userRoleMapper.delete(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getRoleId, id));
         roleMapper.deleteById(id);
@@ -230,6 +246,7 @@ public class SystemController {
     }
 
     @GetMapping("/menus")
+    @PreAuthorize("hasAuthority('system:menu:list')")
     public ApiResponse<List<MenuEntity>> menus(@RequestParam(required = false) String keyword) {
         List<MenuEntity> rows = filterMenus(keyword);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
@@ -237,6 +254,7 @@ public class SystemController {
 
     @PostMapping("/menus")
     @OperLog(module = "System", action = "Save menu")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<MenuEntity> saveMenu(@RequestBody MenuEntity entity) {
         validateMenu(entity);
         if (entity.getId() == null) {
@@ -249,6 +267,7 @@ public class SystemController {
 
     @DeleteMapping("/menus/{id}")
     @OperLog(module = "System", action = "Delete menu")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteMenu(@PathVariable Long id) {
         long childCount = menuMapper.selectCount(new LambdaQueryWrapper<MenuEntity>().eq(MenuEntity::getParentId, id));
         if (childCount > 0) {
@@ -260,12 +279,14 @@ public class SystemController {
     }
 
     @GetMapping("/depts")
+    @PreAuthorize("hasAuthority('system:dept:list')")
     public ApiResponse<List<DeptEntity>> depts(@RequestParam(required = false) String keyword) {
         List<DeptEntity> rows = filterDepts(keyword);
         return ApiResponse.success(rows, (long) rows.size(), RequestTraceContext.get());
     }
 
     @PostMapping("/depts")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<DeptEntity> saveDept(@RequestBody DeptEntity entity) {
         validateDept(entity);
         if (entity.getId() == null) {
@@ -277,6 +298,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/depts/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteDept(@PathVariable Long id) {
         long childCount = deptMapper.selectCount(new LambdaQueryWrapper<DeptEntity>().eq(DeptEntity::getParentId, id));
         if (childCount > 0) {
@@ -291,6 +313,7 @@ public class SystemController {
     }
 
     @GetMapping("/posts")
+    @PreAuthorize("hasAuthority('system:post:list')")
     public ApiResponse<List<PostEntity>> posts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status
@@ -314,7 +337,9 @@ public class SystemController {
     }
 
     @PostMapping("/posts")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<PostEntity> savePost(@RequestBody PostEntity entity) {
+        validatePost(entity);
         if (entity.getId() == null) {
             postMapper.insert(entity);
         } else {
@@ -324,6 +349,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/posts/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deletePost(@PathVariable Long id) {
         long userCount = userMapper.selectCount(new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getPostId, id));
         if (userCount > 0) {
@@ -334,6 +360,7 @@ public class SystemController {
     }
 
     @GetMapping("/dicts/types")
+    @PreAuthorize("hasAuthority('system:dict:list')")
     public ApiResponse<List<DictTypeEntity>> dictTypes(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status
@@ -356,6 +383,7 @@ public class SystemController {
     }
 
     @GetMapping("/dicts/data")
+    @PreAuthorize("hasAuthority('system:dict:list')")
     public ApiResponse<List<DictDataEntity>> dictData(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long typeId,
@@ -382,7 +410,9 @@ public class SystemController {
     }
 
     @PostMapping("/dicts/types")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<DictTypeEntity> saveDictType(@RequestBody DictTypeEntity entity) {
+        validateDictType(entity);
         if (entity.getId() == null) {
             dictTypeMapper.insert(entity);
         } else {
@@ -392,6 +422,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/dicts/types/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteDictType(@PathVariable Long id) {
         long dataCount = dictDataMapper.selectCount(new LambdaQueryWrapper<DictDataEntity>().eq(DictDataEntity::getTypeId, id));
         if (dataCount > 0) {
@@ -402,6 +433,7 @@ public class SystemController {
     }
 
     @PostMapping("/dicts/data")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<DictDataEntity> saveDictData(@RequestBody DictDataEntity entity) {
         if (entity.getId() == null) {
             dictDataMapper.insert(entity);
@@ -412,12 +444,14 @@ public class SystemController {
     }
 
     @DeleteMapping("/dicts/data/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteDictData(@PathVariable Long id) {
         dictDataMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
     }
 
     @GetMapping("/configs")
+    @PreAuthorize("hasAuthority('system:config:list')")
     public ApiResponse<List<ConfigEntity>> configs(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer builtin
@@ -442,7 +476,9 @@ public class SystemController {
     }
 
     @PostMapping("/configs")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<ConfigEntity> saveConfig(@RequestBody ConfigEntity entity) {
+        validateConfig(entity);
         if (entity.getId() == null) {
             configMapper.insert(entity);
         } else {
@@ -452,6 +488,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/configs/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteConfig(@PathVariable Long id) {
         ConfigEntity config = configMapper.selectById(id);
         if (config != null && Integer.valueOf(1).equals(config.getBuiltin())) {
@@ -462,6 +499,7 @@ public class SystemController {
     }
 
     @GetMapping("/notices")
+    @PreAuthorize("hasAuthority('system:notice:list')")
     public ApiResponse<List<NoticeEntity>> notices(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String type,
@@ -486,6 +524,7 @@ public class SystemController {
     }
 
     @PostMapping("/notices")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<NoticeEntity> saveNotice(@RequestBody NoticeEntity entity) {
         if (entity.getId() == null) {
             noticeMapper.insert(entity);
@@ -496,6 +535,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/notices/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> deleteNotice(@PathVariable Long id) {
         noticeMapper.deleteById(id);
         return ApiResponse.success(null, RequestTraceContext.get());
@@ -619,6 +659,131 @@ public class SystemController {
 
     private boolean contains(String value, String keyword) {
         return StringUtils.hasText(value) && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private void validateUserPayload(UserPayload payload) {
+        if (!StringUtils.hasText(payload.username())) {
+            throw new BizException("A0400", "Username is required");
+        }
+        if (!StringUtils.hasText(payload.nickName())) {
+            throw new BizException("A0400", "Display name is required");
+        }
+        if (!StringUtils.hasText(payload.dataScope())) {
+            throw new BizException("A0400", "Data scope is required");
+        }
+        if (payload.status() == null) {
+            throw new BizException("A0400", "Status is required");
+        }
+        if (payload.id() == null && !StringUtils.hasText(payload.password())) {
+            throw new BizException("A0400", "Password is required for new users");
+        }
+        if (payload.deptId() != null && lookupService.getDept(payload.deptId()) == null) {
+            throw new BizException("A0400", "Department does not exist");
+        }
+        if (payload.postId() != null && lookupService.getPost(payload.postId()) == null) {
+            throw new BizException("A0400", "Post does not exist");
+        }
+        if (payload.roleIds() == null || payload.roleIds().isEmpty()) {
+            throw new BizException("A0400", "At least one role is required");
+        }
+
+        assertUnique(
+                userMapper.selectCount(new LambdaQueryWrapper<UserEntity>()
+                        .eq(UserEntity::getUsername, payload.username())
+                        .ne(payload.id() != null, UserEntity::getId, payload.id())),
+                "Username already exists"
+        );
+        if (StringUtils.hasText(payload.email())) {
+            assertUnique(
+                    userMapper.selectCount(new LambdaQueryWrapper<UserEntity>()
+                            .eq(UserEntity::getEmail, payload.email())
+                            .ne(payload.id() != null, UserEntity::getId, payload.id())),
+                    "Email already exists"
+            );
+        }
+        if (StringUtils.hasText(payload.phone())) {
+            assertUnique(
+                    userMapper.selectCount(new LambdaQueryWrapper<UserEntity>()
+                            .eq(UserEntity::getPhone, payload.phone())
+                            .ne(payload.id() != null, UserEntity::getId, payload.id())),
+                    "Phone number already exists"
+            );
+        }
+    }
+
+    private void validateRolePayload(RolePayload payload) {
+        if (!StringUtils.hasText(payload.name()) || !StringUtils.hasText(payload.code())) {
+            throw new BizException("A0400", "Role name and code are required");
+        }
+        if (!StringUtils.hasText(payload.dataScope()) || payload.status() == null) {
+            throw new BizException("A0400", "Role status and data scope are required");
+        }
+        assertUnique(
+                roleMapper.selectCount(new LambdaQueryWrapper<RoleEntity>()
+                        .eq(RoleEntity::getName, payload.name())
+                        .ne(payload.id() != null, RoleEntity::getId, payload.id())),
+                "Role name already exists"
+        );
+        assertUnique(
+                roleMapper.selectCount(new LambdaQueryWrapper<RoleEntity>()
+                        .eq(RoleEntity::getCode, payload.code())
+                        .ne(payload.id() != null, RoleEntity::getId, payload.id())),
+                "Role code already exists"
+        );
+    }
+
+    private void validatePost(PostEntity entity) {
+        if (!StringUtils.hasText(entity.getName()) || !StringUtils.hasText(entity.getCode())) {
+            throw new BizException("A0400", "Post name and code are required");
+        }
+        assertUnique(
+                postMapper.selectCount(new LambdaQueryWrapper<PostEntity>()
+                        .eq(PostEntity::getName, entity.getName())
+                        .ne(entity.getId() != null, PostEntity::getId, entity.getId())),
+                "Post name already exists"
+        );
+        assertUnique(
+                postMapper.selectCount(new LambdaQueryWrapper<PostEntity>()
+                        .eq(PostEntity::getCode, entity.getCode())
+                        .ne(entity.getId() != null, PostEntity::getId, entity.getId())),
+                "Post code already exists"
+        );
+    }
+
+    private void validateDictType(DictTypeEntity entity) {
+        if (!StringUtils.hasText(entity.getName()) || !StringUtils.hasText(entity.getTypeCode())) {
+            throw new BizException("A0400", "Dictionary type name and code are required");
+        }
+        assertUnique(
+                dictTypeMapper.selectCount(new LambdaQueryWrapper<DictTypeEntity>()
+                        .eq(DictTypeEntity::getName, entity.getName())
+                        .ne(entity.getId() != null, DictTypeEntity::getId, entity.getId())),
+                "Dictionary type name already exists"
+        );
+        assertUnique(
+                dictTypeMapper.selectCount(new LambdaQueryWrapper<DictTypeEntity>()
+                        .eq(DictTypeEntity::getTypeCode, entity.getTypeCode())
+                        .ne(entity.getId() != null, DictTypeEntity::getId, entity.getId())),
+                "Dictionary type code already exists"
+        );
+    }
+
+    private void validateConfig(ConfigEntity entity) {
+        if (!StringUtils.hasText(entity.getName()) || !StringUtils.hasText(entity.getConfigKey())) {
+            throw new BizException("A0400", "Config name and key are required");
+        }
+        assertUnique(
+                configMapper.selectCount(new LambdaQueryWrapper<ConfigEntity>()
+                        .eq(ConfigEntity::getConfigKey, entity.getConfigKey())
+                        .ne(entity.getId() != null, ConfigEntity::getId, entity.getId())),
+                "Config key already exists"
+        );
+    }
+
+    private void assertUnique(long duplicateCount, String message) {
+        if (duplicateCount > 0) {
+            throw new BizException("A0400", message);
+        }
     }
 
     private void validateMenu(MenuEntity entity) {

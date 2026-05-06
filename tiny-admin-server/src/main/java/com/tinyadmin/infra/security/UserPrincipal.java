@@ -2,6 +2,7 @@ package com.tinyadmin.infra.security;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,7 +13,15 @@ public record UserPrincipal(
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return session.getPermissions().stream().map(SimpleGrantedAuthority::new).toList();
+        return Stream.concat(
+                        safeList(session.getPermissions()).stream().map(SimpleGrantedAuthority::new),
+                        safeList(session.getRoleCodes()).stream().map(roleCode -> new SimpleGrantedAuthority("ROLE_" + roleCode))
+                )
+                .toList();
+    }
+
+    private List<String> safeList(List<String> values) {
+        return values == null ? List.of() : values;
     }
 
     @Override

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.tinyadmin.auth.JsonTestHelper;
+import com.tinyadmin.infra.store.CaptchaStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,6 +25,9 @@ class SystemManagementIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private CaptchaStore captchaStore;
 
     @Test
     void usersEndpointShouldIncludeRoleAndOrgMetadataForEditing() throws Exception {
@@ -163,7 +167,7 @@ class SystemManagementIntegrationTest {
 
         String body = captchaResult.getResponse().getContentAsString();
         String captchaKey = JsonTestHelper.read(body, "$.data.captchaKey");
-        String captchaCode = JsonTestHelper.read(body, "$.data.captchaText");
+        String captchaCode = captchaStore.get(captchaKey).orElseThrow();
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
