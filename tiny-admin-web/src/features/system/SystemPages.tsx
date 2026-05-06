@@ -263,6 +263,8 @@ export function SystemUsersPage() {
           <Popconfirm
             title="确认删除该用户？"
             description="该操作会同时移除角色绑定。"
+            okText="确认"
+            cancelText="取消"
             onConfirm={async () => {
               await systemApi.deleteUser(record.id)
               message.success('用户已删除')
@@ -560,6 +562,8 @@ export function SystemRolesPage() {
                   <Popconfirm
                     title="确认删除该角色？"
                     description="角色删除后会移除对应用户授权。"
+                    okText="确认"
+                    cancelText="取消"
                     onConfirm={async () => {
                       await systemApi.deleteRole(record.id)
                       message.success('角色已删除')
@@ -799,6 +803,8 @@ export function SystemMenusPage() {
                   <Popconfirm
                     title="确认删除该菜单？"
                     description="存在子节点时服务端会阻止删除。"
+                    okText="确认"
+                    cancelText="取消"
                     onConfirm={async () => {
                       await systemApi.deleteMenu(record.id)
                       message.success('菜单已删除')
@@ -1060,6 +1066,8 @@ export function SystemDeptsPage() {
                   <Popconfirm
                     title="确认删除该部门？"
                     description="存在下级或绑定用户时服务端会阻止删除。"
+                    okText="确认"
+                    cancelText="取消"
                     onConfirm={async () => {
                       await systemApi.deleteDept(record.id)
                       message.success('部门已删除')

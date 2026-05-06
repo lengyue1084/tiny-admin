@@ -167,6 +167,8 @@ export function ResourcePage<T extends { id?: number | string }>({
               <Popconfirm
                 title="确认删除这条记录？"
                 description="删除后不可恢复，请谨慎操作。"
+                okText="确认"
+                cancelText="取消"
                 onConfirm={async () => {
                   await remove(Number(record.id))
                   message.success('删除成功')
@@ -295,6 +297,8 @@ export function ResourcePage<T extends { id?: number | string }>({
           title={`${current?.id ? '编辑' : '新建'}${title}`}
           open={open}
           width={modalWidth}
+          okText="保存"
+          cancelText="取消"
           onCancel={() => setOpen(false)}
           onOk={async () => {
             const values = await form.validateFields()
